@@ -15,31 +15,32 @@ import pandas as pd
 def calculate_volume_profile(df):
     # Convert the epoch timestamp to human-readable datetime format
     POCs, VAHs, VALs, HVNs, LVNs, Volumes = [], [], [], [], [], []
+    Opens, Highs, Lows, Closes = [], [], [], []
     df['Open_Time'] = pd.to_datetime(df['Open_Time'], unit='ms')
     
     # Loop through the DataFrame
     for idx, row in df.iterrows():
-        # Data up to the current day
-        current_data = df.loc[:idx]
+        # Get data only for the current month (row)
+        current_data = df.loc[idx:idx] 
         volume_price = current_data.groupby('Close')['Volume'].sum().sort_values(ascending=False)
         total_volume = volume_price.sum()
         
         # Point of Control (POC)
-        POC_price = volume_price.idxmax()
+        POC_price = volume_price.idxmax() if not volume_price.empty else row['Close'] 
         
         # Calculate VAH and VAL
         sorted_volume = volume_price.sort_index(ascending=False)
         sorted_volume_cumsum = sorted_volume.cumsum()
         value_area = sorted_volume[sorted_volume_cumsum <= total_volume*0.7]
-        VAH_price = value_area.index.max()
-        VAL_price = value_area.index.min()
+        VAH_price = value_area.index.max() if not value_area.empty else row['High']
+        VAL_price = value_area.index.min() if not value_area.empty else row['Low']
 
         # Calculating HVN and LVN for the current interval
         volume_diff = sorted_volume.diff().fillna(0)
-        HVN_price = volume_diff.idxmax()
-        LVN_price = volume_diff.idxmin()
+        HVN_price = volume_diff.idxmax() if not volume_diff.empty else row['High']
+        LVN_price = volume_diff.idxmin() if not volume_diff.empty else row['Low']
 
-        # Append the results to the lists
+        # Append the results and OHLC to the lists
         POCs.append(POC_price)
         VAHs.append(VAH_price)
         VALs.append(VAL_price)
@@ -47,9 +48,18 @@ def calculate_volume_profile(df):
         LVNs.append(LVN_price)
         Volumes.append(current_data['Volume'].sum())  # Adding cumulative volume for each day
 
+        Opens.append(row['Open'])
+        Highs.append(row['High'])
+        Lows.append(row['Low'])
+        Closes.append(row['Close'])
+
     # Create a new DataFrame with the results
     result_df = pd.DataFrame({
         'Open_Time': df['Open_Time'],
+        'Open': Opens,
+        'High': Highs,
+        'Low': Lows,
+        'Close': Closes,
         'POC': POCs,
         'VAH': VAHs,
         'VAL': VALs,
@@ -59,6 +69,8 @@ def calculate_volume_profile(df):
     })
 
     return result_df
+
+
 
 
 
@@ -85,10 +97,10 @@ async def fetch_historical_data(symbol: str, interval: str, limit: int = 1000):
 async def main(symbols: List[str]):
     print(f'Started Collecting Tick Data of {symbols}...')
 
-    # Fetch historical data (30 days of daily data)
+    # Fetch historical data (M=month,w=week,d=day,h=hour,m=minute)
     for symbol in symbols:
         print(f"Fetching historical data for {symbol}")
-        klines = await fetch_historical_data(symbol, interval='1m', limit=720)
+        klines = await fetch_historical_data(symbol, interval='1M', limit=12)
         # Create a DataFrame
         columns = ["Open_Time", "Open", "High", "Low", "Close", "Volume", "Close_Time", "Quote_Asset_Volume", "Number_of_Trades", "Taker_Buy_Base_Asset_Volume", "Taker_Buy_Quote_Asset_Volume", "Ignore"]
         df = pd.DataFrame(klines, columns=columns)
