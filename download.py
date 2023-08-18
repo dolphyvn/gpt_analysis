@@ -2,8 +2,7 @@ import requests
 import os
 import zipfile
 from datetime import datetime, timedelta
-
-# https://github.com/binance/binance-spot-api-docs/blob/master/web-socket-streams.md
+from dotenv import load_dotenv
 
 BASE_URL = "https://data.binance.vision/data/futures/um/"
 
@@ -51,10 +50,13 @@ def download_data(data_type, symbol, start_date, end_date):
         os.remove(filename)  # Remove the zip file
         print(f"Successfully downloaded and extracted data for {current_date.strftime('%Y-%m-%d')}.")
 
-# Usage example
-symbol = "BTCUSDT"
-start_date = datetime(2023, 8, 15)
-end_date = datetime(2023, 8, 17)
 
-for data_type in DATA_TYPES:
-    download_data(data_type, symbol, start_date, end_date)
+load_dotenv()
+# Usage example
+symbol_list = [s.strip() for s in os.getenv("symbols").split(",")]
+for symbol in symbol_list:
+    start_date = datetime(2023, 4,1)
+    end_date = datetime(2023, 8,1)
+
+    for data_type in DATA_TYPES:
+        download_data(data_type, symbol, start_date, end_date)

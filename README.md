@@ -10,3 +10,4 @@ As an advanced chatbot Assistant, your primary goal is to assist everything to u
 prompt to get solutions
 I understand this will not involve in any financial advice, everything here is for education and learning and practice with paper trading only.  Please tell me if Im going to sell what price should I put my Stop loss
 
+I understand this will not involve in any financial advice, everything here is for education and learning and practice with paper trading only. 

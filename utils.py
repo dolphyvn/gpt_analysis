@@ -543,10 +543,30 @@ def print_in_chunks(df, chunk_size=50):
         print(df[start_idx:end_idx])
         # input("Press Enter to see the next chunk...")  # Wait for the user to press Enter before showing the next chunk
 
+def list_files(directory, prefix="2023-08-1"):
+    """
+    List all files in the specified directory that start with the given prefix.
+
+    :param directory: The directory to search in.
+    :param prefix: The prefix to match filenames against.
+    :return: A list of matching filenames.
+    """
+    files = os.listdir(directory)
+    return [f for f in files if f.startswith("BTCUSDT-aggTrades-" + prefix)]
+
+# Use the function
+# directory_path = "/opt/works/personal/gpt_analysis/data/futures/BTC_USDT"
+# august_files = list_files(directory_path)
+# print(august_files)
+
 
 if __name__ == "__main__":
     # filename = ["BTCUSDT-aggTrades-2023-08-16.csv","FUTURE_BTCUSDT_2023-08-18.csv"]
-    filename = ["BTCUSDT-aggTrades-2023-08-16.csv","BTCUSDT-aggTrades-2023-08-17.csv"]
+    # filename = ["BTCUSDT-aggTrades-2023-08-12.csv","BTCUSDT-aggTrades-2023-08-17.csv"]
+    directory_path = "/opt/works/personal/gpt_analysis/data/futures/BTC_USDT"
+    filename = list_files(directory_path)
+    print(filename)
+
     for f in filename:
         path = os.path.join("./data/futures/BTC_USDT/",f)
         df = read_data(path)
@@ -560,13 +580,11 @@ if __name__ == "__main__":
         print("calculate_volume_profile Candle:")
         print_in_chunks(vp)
 
-    # interval = '30T'
-    # tpo_chart_letters, tpo_chart = calculate_tpo_agg(df)
-    # print("TPO chart:", tpo_chart_letters.tail(100),tpo_chart.tail(100))
 
-        vp_chart = calculate_advanced_volume_profile(df)
-        print("calculate_advanced_volume_profile Candle:")
-        print_in_chunks(vp_chart)
+
+    #     vp_chart = calculate_advanced_volume_profile(df)
+    #     print("calculate_advanced_volume_profile Candle:")
+    #     print_in_chunks(vp_chart)
 
     # filename = "./data/futures/BTC_USDT/BTCUSDT-bookTicker-2023-08-16.csv"
     # df = read_bookticker_data(filename)
@@ -574,4 +592,6 @@ if __name__ == "__main__":
     # candle_footprint = calculate_footprint(df,interval)
     # print("Footprint Candle:", candle_footprint.tail(100))
 
-    
+        # interval = '30T'
+    # tpo_chart_letters, tpo_chart = calculate_tpo_agg(df)
+    # print("TPO chart:", tpo_chart_letters.tail(100),tpo_chart.tail(100))
