@@ -529,40 +529,44 @@ def calculate_volume_profile(df):
         
     return pd.DataFrame(results)
 
+def print_in_chunks(df, chunk_size=50):
+    if len(df) <= chunk_size:
+        print(df)
+        return
+
+    num_chunks = (len(df) - 1) // chunk_size + 1
+    
+    for i in range(num_chunks):
+        start_idx = i * chunk_size
+        end_idx = start_idx + chunk_size
+        print("Part {i}")
+        print(df[start_idx:end_idx])
+        # input("Press Enter to see the next chunk...")  # Wait for the user to press Enter before showing the next chunk
+
 
 if __name__ == "__main__":
     # filename = ["BTCUSDT-aggTrades-2023-08-16.csv","FUTURE_BTCUSDT_2023-08-18.csv"]
-    filename = ["FUTURE_BTCUSDT_2023-08-18.csv"]
+    filename = ["BTCUSDT-aggTrades-2023-08-16.csv","BTCUSDT-aggTrades-2023-08-17.csv"]
     for f in filename:
         path = os.path.join("./data/futures/BTC_USDT/",f)
         df = read_data(path)
 
-        interval = '5T'
+        interval = '30T'
         candle_footprint = footprint_candle_agg(df,interval)
-        print("Footprint Candle:", candle_footprint.tail(100))
-
-        # Calculate the midpoint index
-        midpoint = len(candle_footprint) // 2
-
-        # Split the DataFrame into two halves from top to bottom
-        first_half = candle_footprint.iloc[:midpoint]
-        second_half = candle_footprint.iloc[midpoint:]
-
-        print("First Half:")
-        print(first_half)
-
-        print("\nSecond Half:")
-        print(second_half)
+        print("Footprint Candle:")
+        print_in_chunks(candle_footprint)
 
         vp = calculate_volume_profile(df)
-        print("Volume Profile (daily value area):\n", vp)
+        print("calculate_volume_profile Candle:")
+        print_in_chunks(vp)
 
     # interval = '30T'
     # tpo_chart_letters, tpo_chart = calculate_tpo_agg(df)
     # print("TPO chart:", tpo_chart_letters.tail(100),tpo_chart.tail(100))
 
         vp_chart = calculate_advanced_volume_profile(df)
-        print("VP chart:", vp_chart)
+        print("calculate_advanced_volume_profile Candle:")
+        print_in_chunks(vp_chart)
 
     # filename = "./data/futures/BTC_USDT/BTCUSDT-bookTicker-2023-08-16.csv"
     # df = read_bookticker_data(filename)

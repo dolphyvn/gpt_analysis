@@ -38,9 +38,24 @@ def process_message(msg: dict, market: str):
     print(f"Logged data for {market}{msg['a']}")
 
 
+async def fetch_historical_data(symbol: str, interval: str, limit: int = 1000):
+    client = await AsyncClient.create()
+    klines = await client.futures_klines(symbol=symbol, interval=interval, limit=limit)
+    await client.close_connection()
+    return klines
+
 
 async def main(symbols: List[str], market: str):
     print(f'Started Collecting Tick Data of {symbols}...({market} market)')
+
+    # Fetch historical data (30 days of daily data)
+    for symbol in symbols:
+        print(f"Fetching historical data for {symbol}")
+        klines = await fetch_historical_data(symbol, interval='1d', limit=30)
+        print(klines)
+        # volume_profile = calculate_volume_profile(klines)
+        # print(f"Volume profile for {symbol}:", volume_profile[:10])  # Print top 10 volume profiles
+
     client = await AsyncClient.create()
     bsm = BinanceSocketManager(client)
     symbols = [f"{s}@aggTrade" for s in symbols]
