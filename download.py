@@ -3,6 +3,8 @@ import os
 import zipfile
 from datetime import datetime, timedelta
 
+# https://github.com/binance/binance-spot-api-docs/blob/master/web-socket-streams.md
+
 BASE_URL = "https://data.binance.vision/data/futures/um/"
 
 DATA_TYPES = ["aggTrades", "bookTicker", "metrics", "liquidationSnapshot"]

@@ -1,7 +1,7 @@
 import pandas as pd
 from collections import defaultdict
 from datetime import datetime
-
+import os
 
 # aggregated data
 # Field Name  Description
@@ -51,6 +51,216 @@ from datetime import datetime
 # order_status    Order Status
 # last_fill_quantity  Last Trade Order Quantity
 # accumulated_fill_quantity   Order Accumulated Fill Quantity
+
+
+# import pandas as pd
+import datetime
+
+def volume_by_price(df, interval='30T'):
+    # Assuming df has 'price', 'quantity' columns and a datetime index
+    
+    # Group by the specified time interval and aggregate price and volume information
+    grouped = df.groupby(pd.Grouper(freq=interval)).agg({'price': ['min', 'max'], 'quantity': 'sum'}).dropna()
+    
+    # Initialize the volume profile dictionary
+    volume_profile = {}
+
+    for _, row in grouped.iterrows():
+        min_price, max_price, volume = row[('price', 'min')], row[('price', 'max')], row[('quantity', 'sum')]
+        price_range = pd.interval_range(start=min_price, end=max_price, freq='1T')  # 1T means 1 unit of price, adjust as needed
+
+        for price_interval in price_range:
+            center_price = (price_interval.left + price_interval.right) / 2
+            volume_profile[center_price] = volume_profile.get(center_price, 0) + volume / len(price_range)
+    
+    # Convert dictionary to DataFrame
+    vp_df = pd.DataFrame(list(volume_profile.items()), columns=['Price', 'Volume']).sort_values(by='Price')
+    
+    # Calculate Point of Control (POC)
+    poc_price = vp_df.loc[vp_df['Volume'].idxmax()]['Price']
+    
+    # Calculate Value Area
+    vp_df_sorted = vp_df.sort_values(by='Volume', ascending=False)
+    vp_df_sorted['Cumulative Volume'] = vp_df_sorted['Volume'].cumsum()
+    value_area_df = vp_df_sorted[vp_df_sorted['Cumulative Volume'] <= vp_df_sorted['Cumulative Volume'].iloc[-1] * 0.7]
+    value_area_high = value_area_df['Price'].max()
+    value_area_low = value_area_df['Price'].min()
+    
+    # Identify HVN and LVN
+    vp_df['Volume Diff'] = vp_df['Volume'].diff().fillna(0)
+    hvn = vp_df[vp_df['Volume Diff'] > 0]['Price'].tolist()
+    lvn = vp_df[vp_df['Volume Diff'] < 0]['Price'].tolist()
+
+    results = {
+        'POC': poc_price,
+        'Value Area High': value_area_high,
+        'Value Area Low': value_area_low,
+        'High Volume Nodes': hvn,
+        'Low Volume Nodes': lvn
+    }
+
+    # Convert results to DataFrame
+    results_df = pd.DataFrame(list(results.items()), columns=['Metric', 'Value'])
+
+    return results_df
+
+
+def calculate_advanced_volume_profile(df, interval="30T"):
+    # Calculate the total volume for the entire DataFrame
+    total_volume = df['quantity'].sum()
+
+    # Up/Down volume based on close and open comparison
+    df['direction'] = ['Up' if close >= open else 'Down' for close, open in zip(df['price'], df['price'].shift(1))]
+    df['up_volume'] = df['quantity'].where(df['direction'] == 'Up', 0)
+    df['down_volume'] = df['quantity'].where(df['direction'] == 'Down', 0)
+
+    # Resample the dataframe based on the provided interval
+    df_resampled = df.resample(interval, on='transact_time').agg({
+        'price': ['min', 'max'],
+        'up_volume': 'sum',
+        'down_volume': 'sum'
+    })
+
+    results = []
+
+    for idx, row in df_resampled.iterrows():
+        start_time = idx
+        numeric_interval = int(interval[:-1])  # Strip out the last character and convert to integer
+        end_time = start_time + pd.Timedelta(minutes=numeric_interval)
+        
+        interval_df = df[(df['transact_time'] >= start_time) & (df['transact_time'] < end_time)].copy()
+
+        # Total volume within this interval
+        interval_total_volume = interval_df['quantity'].sum()
+
+        # Get Profile High and Low
+        profile_high = row[('price', 'max')]
+        profile_low = row[('price', 'min')]
+
+        # Get POC: price level with the maximum traded volume
+        poc = interval_df.groupby('price')['quantity'].sum().idxmax()
+
+        # Calculate Value Area (70% of total volume)
+        interval_df_grouped = interval_df.groupby('price').agg({'quantity': 'sum'}).sort_values(by='quantity', ascending=False)
+        interval_df_grouped['cumulative_volume'] = interval_df_grouped['quantity'].cumsum()
+        value_area_df = interval_df_grouped[interval_df_grouped['cumulative_volume'] <= interval_total_volume * 0.7]
+        value_area_high = value_area_df.index.max()
+        value_area_low = value_area_df.index.min()
+
+        results.append({
+            'Start_Time': start_time,
+            'End_Time': end_time,
+            'Profile_High': profile_high,
+            'Profile_Low': profile_low,
+            'POC': poc,
+            'Value_Area_High': value_area_high,
+            'Value_Area_Low': value_area_low,
+            'Interval_Total_Volume': interval_total_volume
+        })
+
+    # Convert the results list of dictionaries to a DataFrame
+    results_df = pd.DataFrame(results)
+    
+    return results_df
+
+
+def calculate_tpo_agg(df):
+    # Convert transact_time into a readable datetime format
+    df['transact_time'] = pd.to_datetime(df['transact_time'], unit='ms')
+
+    # Set time interval for TPOs
+    interval = "30T"
+
+    # Group by time interval and get the min, max prices for each interval
+    price_ranges = df.groupby(pd.Grouper(key='transact_time', freq=interval)).agg({'price': ['min', 'max']})
+
+    tpo_chart = {}
+    letters = list('ABCDEFGHIJKLMNOPQRSTUVWXYZ')
+
+    for i, (index, row) in enumerate(price_ranges.iterrows()):
+        min_price, max_price = row['price']
+        tpo_letter = letters[i % len(letters)]  # cycle through the letters
+        
+        for price in range(int(min_price), int(max_price) + 1):
+            if price not in tpo_chart:
+                tpo_chart[price] = []
+            tpo_chart[price].append(tpo_letter)
+
+    # Calculate Point of Control
+    poc_price = max(tpo_chart, key=lambda k: len(tpo_chart[k]))
+    
+    # Calculate Value Area (let's assume top 70% for now, but this can be changed)
+    all_tpos = sum([len(v) for v in tpo_chart.values()])
+    tpo_sorted_by_count = sorted(tpo_chart.items(), key=lambda x: len(x[1]), reverse=True)
+    current_tpo_count = 0
+    value_area = []
+
+    for price, tpos in tpo_sorted_by_count:
+        current_tpo_count += len(tpos)
+        value_area.append(price)
+        if current_tpo_count >= all_tpos * 0.7:  # 70%
+            break
+
+    # Calculate Rotation Factor
+    prev_count = len(tpo_chart[value_area[0]])
+    rotation_factor = 0
+
+    for price in value_area[1:]:
+        curr_count = len(tpo_chart[price])
+        rotation_factor += (curr_count - prev_count)
+        prev_count = curr_count
+
+    # Calculate Delta (difference between buying and selling TPOs)
+    df['is_buyer'] = df['is_buyer_maker'].astype(int)
+    df['is_seller'] = (~df['is_buyer_maker']).astype(int)
+    total_buyers = df['is_buyer'].sum()
+    total_sellers = df['is_seller'].sum()
+    delta = total_buyers - total_sellers
+
+    # Extract TPO letters and price range for each time interval
+    tpo_letters_list = []
+    price_range_list = []
+    
+    for index in price_ranges.index:
+        min_price, max_price = price_ranges.loc[index, 'price']
+        # tpo_letters = ''.join([tpo_chart.get(price, '') for price in range(int(min_price), int(max_price) + 1)])
+        tpo_letters = ''.join([''.join(tpo_chart.get(price, '')) for price in range(int(min_price), int(max_price) + 1)])
+
+        price_range = f"{min_price} - {max_price}"
+        
+        tpo_letters_list.append(tpo_letters)
+        price_range_list.append(price_range)
+
+    # Create and return a DataFrame with the results
+    results_df = pd.DataFrame({
+        'Time Interval': price_ranges.index,
+        'TPO Letters': tpo_letters_list,
+        'Price Range': price_range_list
+    })
+
+
+    summary_df = pd.DataFrame({
+        'POC Price': [poc_price],
+        'Value Area Min': [min(value_area)],
+        'Value Area Max': [max(value_area)],
+        'Rotation Factor': [rotation_factor],
+        'Delta': [delta]
+    })
+
+    return results_df, summary_df
+
+
+
+# csv_path = "path_to_your_csv.csv"
+# tpo_chart, poc, value_area, rotation_factor, delta = calculate_tpo(csv_path)
+# for price, tpos in sorted(tpo_chart.items(), reverse=True):
+#     print(f"{price}: {' '.join(tpos)}")
+
+# print("\nPoint of Control:", poc)
+# print("Value Area:", value_area)
+# print("Rotation Factor:", rotation_factor)
+# print("Delta:", delta)
+
 
 def read_data(filename):
     df = pd.read_csv(filename)
@@ -321,22 +531,43 @@ def calculate_volume_profile(df):
 
 
 if __name__ == "__main__":
-    filename = "./data/futures/BTC_USDT/BTCUSDT-aggTrades-2023-08-16.csv"
-    df = read_data(filename)
+    # filename = ["BTCUSDT-aggTrades-2023-08-16.csv","FUTURE_BTCUSDT_2023-08-18.csv"]
+    filename = ["FUTURE_BTCUSDT_2023-08-18.csv"]
+    for f in filename:
+        path = os.path.join("./data/futures/BTC_USDT/",f)
+        df = read_data(path)
 
-    candle_footprint = footprint_candle_agg(df,'30T')
-    print("5T Footprint Candle:", candle_footprint.tail(50))
-    # vp = calculate_volume_profile(df)
-    # print("Volume Profile (daily value area):\n", vp)
+        interval = '5T'
+        candle_footprint = footprint_candle_agg(df,interval)
+        print("Footprint Candle:", candle_footprint.tail(100))
 
-    # daily_footprint = calculate_daily_footprint(df,10.0)
-    # print("Daily Footprint Candle:", daily_footprint.tail(50))
+        # Calculate the midpoint index
+        midpoint = len(candle_footprint) // 2
 
-    filename = "./data/futures/BTC_USDT/BTCUSDT-bookTicker-2023-08-16.csv"
-    df = read_bookticker_data(filename)
+        # Split the DataFrame into two halves from top to bottom
+        first_half = candle_footprint.iloc[:midpoint]
+        second_half = candle_footprint.iloc[midpoint:]
 
-    candle_footprint = calculate_footprint(df,'30T')
-    print("30T Footprint Candle:", candle_footprint.tail(50))
-    # tpo = calculate_TPO(df)
-    # print("TPO:\n", tpo)
+        print("First Half:")
+        print(first_half)
+
+        print("\nSecond Half:")
+        print(second_half)
+
+        vp = calculate_volume_profile(df)
+        print("Volume Profile (daily value area):\n", vp)
+
+    # interval = '30T'
+    # tpo_chart_letters, tpo_chart = calculate_tpo_agg(df)
+    # print("TPO chart:", tpo_chart_letters.tail(100),tpo_chart.tail(100))
+
+        vp_chart = calculate_advanced_volume_profile(df)
+        print("VP chart:", vp_chart)
+
+    # filename = "./data/futures/BTC_USDT/BTCUSDT-bookTicker-2023-08-16.csv"
+    # df = read_bookticker_data(filename)
+
+    # candle_footprint = calculate_footprint(df,interval)
+    # print("Footprint Candle:", candle_footprint.tail(100))
+
     
