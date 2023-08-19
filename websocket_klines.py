@@ -100,7 +100,7 @@ async def main(symbols: List[str]):
     # Fetch historical data (M=month,w=week,d=day,h=hour,m=minute)
     for symbol in symbols:
         print(f"Fetching historical data for {symbol}")
-        klines = await fetch_historical_data(symbol, interval='1M', limit=12)
+        klines = await fetch_historical_data(symbol, interval='4h', limit=36)
         # Create a DataFrame
         columns = ["Open_Time", "Open", "High", "Low", "Close", "Volume", "Close_Time", "Quote_Asset_Volume", "Number_of_Trades", "Taker_Buy_Base_Asset_Volume", "Taker_Buy_Quote_Asset_Volume", "Ignore"]
         df = pd.DataFrame(klines, columns=columns)
