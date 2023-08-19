@@ -569,6 +569,12 @@ def store_klines_to_db(klines_data, interval, symbol, dbname="klines_data.db"):
     )
     """)
 
+    # Ensure the UNIQUE constraint is set for symbol, interval, and open_time
+    cursor.execute("""
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_klines_symbol_interval_open_time 
+    ON klines (symbol, interval, open_time)
+    """)
+
     # Convert the klines data by adding interval and symbol information
     klines_with_interval_and_symbol = [
         (
@@ -592,7 +598,7 @@ def store_klines_to_db(klines_data, interval, symbol, dbname="klines_data.db"):
 
     # Insert klines data into the table
     cursor.executemany("""
-    INSERT INTO klines (symbol, interval, open_time, open, high, low, close, volume, close_time, 
+    INSERT OR REPLACE INTO klines (symbol, interval, open_time, open, high, low, close, volume, close_time, 
                        quote_asset_volume, trades, taker_buy_base_asset_volume, 
                        taker_buy_quote_asset_volume, ignore_column)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -607,31 +613,83 @@ def store_aggregated_trades_to_db(aggregated_trades_data, symbol, dbname="klines
     conn = sqlite3.connect(dbname)
     cursor = conn.cursor()
     
+    # Ensure the UNIQUE constraint is set for symbol and transact_time
+    cursor.execute("""
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_symbol_transact_time 
+    ON aggregated_trades (symbol, transact_time)
+    """)
+
     # Convert the aggregated_trades data by adding symbol information
     aggregated_trades_with_symbol = [
         (
-            trade[0],     # agg_trade_id
-            symbol,       # symbol
-            float(trade[1]),  # price
-            float(trade[2]),  # quantity
-            trade[3],     # first_trade_id
-            trade[4],     # last_trade_id
-            trade[5],     # transact_time
-            trade[6]      # is_buyer_maker
+            float(trade[1]),  # agg_trade_id
+            trade[0],     # symbol
+            float(trade[2]),  # price
+            float(trade[3]),  # quantity
+            trade[4],     # first_trade_id
+            trade[5],     # last_trade_id
+            trade[6],     # transact_time
+            int(trade[7])      # is_buyer_maker (ensure it's an integer)
         ) 
         for trade in aggregated_trades_data
     ]
 
-    # Insert aggregated_trades data into the table
+
+
+    for trade in aggregated_trades_with_symbol[:10]:  # printing the first 10 for inspection
+        print(trade)
+
+
+    # Insert or replace aggregated_trades data into the table
     cursor.executemany("""
-    INSERT INTO aggregated_trades (agg_trade_id, symbol, price, quantity, first_trade_id, 
-                                   last_trade_id, transact_time, is_buyer_maker)
+    INSERT OR REPLACE INTO aggregated_trades 
+    (agg_trade_id, symbol, price, quantity, first_trade_id, 
+     last_trade_id, transact_time, is_buyer_maker)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     """, aggregated_trades_with_symbol)
 
     # Commit the changes and close the connection
     conn.commit()
     conn.close()
+
+
+# def store_aggregated_trades_to_db(aggregated_trades_data, symbol, dbname="klines_data.db"):
+#     conn = sqlite3.connect(dbname)
+#     cursor = conn.cursor()
+    
+#     # Ensure the UNIQUE constraint is set for symbol, and transact_time
+#     cursor.execute("""
+#     CREATE UNIQUE INDEX IF NOT EXISTS idx_symbol_transact_time 
+#     ON aggregated_trades (symbol, transact_time)
+#     """)
+
+#     # Convert the aggregated_trades data by adding symbol and interval information
+#     aggregated_trades_with_symbol = [
+#         (
+#             trade[0],     # agg_trade_id
+#             symbol,       # symbol
+#             float(trade[1]),  # price
+#             float(trade[2]),  # quantity
+#             trade[3],     # first_trade_id
+#             trade[4],     # last_trade_id
+#             trade[5],     # transact_time
+#             trade[6]      # is_buyer_maker
+#         ) 
+#         for trade in aggregated_trades_data
+#     ]
+
+#     # Insert or replace aggregated_trades data into the table
+#     cursor.executemany("""
+#     INSERT OR REPLACE INTO aggregated_trades 
+#     (agg_trade_id, symbol, price, quantity, first_trade_id, 
+#      last_trade_id, transact_time, is_buyer_maker)
+#     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+#     """, aggregated_trades_with_symbol)
+
+#     # Commit the changes and close the connection
+#     conn.commit()
+#     conn.close()
+
 
 
 
