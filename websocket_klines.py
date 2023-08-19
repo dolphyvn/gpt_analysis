@@ -4,7 +4,6 @@ import asyncio
 from typing import List
 from binance import AsyncClient, BinanceSocketManager
 from dotenv import load_dotenv
-from loguru import logger
 from collections import defaultdict
 import pandas as pd
 from utils import store_klines_to_db
@@ -202,7 +201,7 @@ async def main(symbols: List[str],intervals_list: List[str]):
 
 if __name__ == "__main__":
     load_dotenv()
-    logger.remove()
+    # logger.remove()
 
     # Load symbol from .env
     symbol_list = [s.lower().strip() for s in os.getenv("symbols").split(",")]
