@@ -56,6 +56,28 @@ import os
 # import pandas as pd
 import datetime
 
+import csv
+
+def read_csv_and_store(file_name, symbol):
+    with open(file_name, 'r') as csv_file:
+        # Use csv.reader to read the file
+        reader = csv.reader(csv_file)
+        
+        # Skip the header
+        next(reader)
+        
+        # Process the CSV rows
+        aggregated_trades_data = []
+        for row in reader:
+            # Convert the "is_buyer_maker" column from string 'true' or 'false' to int (1 or 0)
+            is_buyer_maker = 1 if row[6].lower() == 'true' else 0
+            trade = (symbol,) + tuple(row[:6]) + (is_buyer_maker,)
+            aggregated_trades_data.append(trade)
+        
+        # Now, store this processed data in the DB
+        store_aggregated_trades_to_db(aggregated_trades_data, symbol)
+
+
 def volume_by_price(df, interval='30T'):
     # Assuming df has 'price', 'quantity' columns and a datetime index
     
