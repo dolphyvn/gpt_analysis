@@ -55,8 +55,8 @@ load_dotenv()
 # Usage example
 symbol_list = [s.strip() for s in os.getenv("symbols").split(",")]
 for symbol in symbol_list:
-    start_date = datetime(2023, 4,1)
-    end_date = datetime(2023, 8,1)
+    start_date = datetime(2023, 8,15)
+    end_date = datetime(2023, 8,20)
 
     for data_type in DATA_TYPES:
         download_data(data_type, symbol, start_date, end_date)

@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 from loguru import logger
 from collections import defaultdict
 import pandas as pd
-
+from utils import store_klines_to_db
 from datetime import datetime
 
 
@@ -180,23 +180,25 @@ async def main(symbols: List[str],intervals_list: List[str]):
         for symbol in symbols:
             print(f"Fetching historical data for {symbol} with interval {interval} and limit {limit}")
             klines = await fetch_historical_data(symbol, interval=interval, desired_limit=limit)
+
             # Create a DataFrame
             columns = ["Open_Time", "Open", "High", "Low", "Close", "Volume", "Close_Time", "Quote_Asset_Volume", "Number_of_Trades", "Taker_Buy_Base_Asset_Volume", "Taker_Buy_Quote_Asset_Volume", "Ignore"]
             df = pd.DataFrame(klines, columns=columns)
             df[['Open', 'High', 'Low', 'Close', 'Volume']] = df[['Open', 'High', 'Low', 'Close', 'Volume']].apply(pd.to_numeric)
 
             # print(klines)
-            volume_profile = calculate_volume_profile(df)
+            store_klines_to_db(klines,interval)
+            # volume_profile = calculate_volume_profile(df)
 
-            # Renaming columns for clarity
-            volume_profile.rename(columns={
-                'Volume_x': 'Volume',
-                'Volume_y': 'Aggregated_Volume_by_Close_Price'
-            }, inplace=True)
+            # # Renaming columns for clarity
+            # volume_profile.rename(columns={
+            #     'Volume_x': 'Volume',
+            #     'Volume_y': 'Aggregated_Volume_by_Close_Price'
+            # }, inplace=True)
 
-            store_to_file(volume_profile,symbol,interval)
-            # print(f"Volume profile for {symbol}:", volume_profile)  # Print top 10 volume profiles
-            print_in_chunks(volume_profile)
+            # store_to_file(volume_profile,symbol,interval)
+            # # print(f"Volume profile for {symbol}:", volume_profile)  # Print top 10 volume profiles
+            # print_in_chunks(volume_profile)
 
 if __name__ == "__main__":
     load_dotenv()

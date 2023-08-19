@@ -529,6 +529,112 @@ def calculate_volume_profile(df):
         
     return pd.DataFrame(results)
 
+import sqlite3
+
+def store_klines_to_db(klines_data, interval, symbol, dbname="klines_data.db"):
+    # Establish a connection to the SQLite database
+    conn = sqlite3.connect(dbname)
+    cursor = conn.cursor()
+    
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS klines (
+        id INTEGER PRIMARY KEY,
+        symbol TEXT NOT NULL,
+        interval TEXT NOT NULL,
+        open_time INTEGER NOT NULL,
+        open REAL NOT NULL,
+        high REAL NOT NULL,
+        low REAL NOT NULL,
+        close REAL NOT NULL,
+        volume REAL NOT NULL,
+        close_time INTEGER NOT NULL,
+        quote_asset_volume REAL NOT NULL,
+        trades INTEGER NOT NULL,
+        taker_buy_base_asset_volume REAL NOT NULL,
+        taker_buy_quote_asset_volume REAL NOT NULL,
+        ignore_column REAL NOT NULL
+    )
+    """)
+
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS aggregated_trades (
+        agg_trade_id INTEGER PRIMARY KEY,
+        symbol TEXT NOT NULL,
+        price REAL NOT NULL,
+        quantity REAL NOT NULL,
+        first_trade_id INTEGER NOT NULL,
+        last_trade_id INTEGER NOT NULL,
+        transact_time INTEGER NOT NULL,
+        is_buyer_maker BOOLEAN NOT NULL
+    )
+    """)
+
+    # Convert the klines data by adding interval and symbol information
+    klines_with_interval_and_symbol = [
+        (
+            symbol,
+            interval,
+            int(kline[0]),           # open_time
+            float(kline[1]),         # open
+            float(kline[2]),         # high
+            float(kline[3]),         # low
+            float(kline[4]),         # close
+            float(kline[5]),         # volume
+            int(kline[6]),           # close_time
+            float(kline[7]),         # quote_asset_volume
+            int(kline[8]),           # trades
+            float(kline[9]),         # taker_buy_base_asset_volume
+            float(kline[10]),        # taker_buy_quote_asset_volume
+            float(kline[11])         # ignore_column
+        ) 
+        for kline in klines_data
+    ]
+
+    # Insert klines data into the table
+    cursor.executemany("""
+    INSERT INTO klines (symbol, interval, open_time, open, high, low, close, volume, close_time, 
+                       quote_asset_volume, trades, taker_buy_base_asset_volume, 
+                       taker_buy_quote_asset_volume, ignore_column)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    """, klines_with_interval_and_symbol)
+
+    # Commit the changes and close the connection
+    conn.commit()
+    conn.close()
+
+
+def store_aggregated_trades_to_db(aggregated_trades_data, symbol, dbname="klines_data.db"):
+    conn = sqlite3.connect(dbname)
+    cursor = conn.cursor()
+    
+    # Convert the aggregated_trades data by adding symbol information
+    aggregated_trades_with_symbol = [
+        (
+            trade[0],     # agg_trade_id
+            symbol,       # symbol
+            float(trade[1]),  # price
+            float(trade[2]),  # quantity
+            trade[3],     # first_trade_id
+            trade[4],     # last_trade_id
+            trade[5],     # transact_time
+            trade[6]      # is_buyer_maker
+        ) 
+        for trade in aggregated_trades_data
+    ]
+
+    # Insert aggregated_trades data into the table
+    cursor.executemany("""
+    INSERT INTO aggregated_trades (agg_trade_id, symbol, price, quantity, first_trade_id, 
+                                   last_trade_id, transact_time, is_buyer_maker)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    """, aggregated_trades_with_symbol)
+
+    # Commit the changes and close the connection
+    conn.commit()
+    conn.close()
+
+
+
 def print_in_chunks(df, chunk_size=50):
     if len(df) <= chunk_size:
         print(df)
@@ -543,7 +649,7 @@ def print_in_chunks(df, chunk_size=50):
         print(df[start_idx:end_idx])
         # input("Press Enter to see the next chunk...")  # Wait for the user to press Enter before showing the next chunk
 
-def list_files(directory, prefix="2023-08-1"):
+def list_files(directory, prefix="2023-08-18"):
     """
     List all files in the specified directory that start with the given prefix.
 
@@ -560,38 +666,38 @@ def list_files(directory, prefix="2023-08-1"):
 # print(august_files)
 
 
-if __name__ == "__main__":
-    # filename = ["BTCUSDT-aggTrades-2023-08-16.csv","FUTURE_BTCUSDT_2023-08-18.csv"]
-    # filename = ["BTCUSDT-aggTrades-2023-08-12.csv","BTCUSDT-aggTrades-2023-08-17.csv"]
-    directory_path = "/opt/works/personal/gpt_analysis/data/futures/BTC_USDT"
-    filename = list_files(directory_path)
-    print(filename)
+# if __name__ == "__main__":
+#     # filename = ["BTCUSDT-aggTrades-2023-08-16.csv","FUTURE_BTCUSDT_2023-08-18.csv"]
+#     # filename = ["BTCUSDT-aggTrades-2023-08-12.csv","BTCUSDT-aggTrades-2023-08-17.csv"]
+#     directory_path = "/opt/works/personal/gpt_analysis/data/futures/BTC_USDT"
+#     filename = list_files(directory_path)
+#     print(filename)
 
-    for f in filename:
-        path = os.path.join("./data/futures/BTC_USDT/",f)
-        df = read_data(path)
+#     for f in filename:
+#         path = os.path.join("./data/futures/BTC_USDT/",f)
+#         df = read_data(path)
 
-        interval = '30T'
-        candle_footprint = footprint_candle_agg(df,interval)
-        print("Footprint Candle:")
-        print_in_chunks(candle_footprint)
+#         interval = '30T'
+#         candle_footprint = footprint_candle_agg(df,interval)
+#         print("Footprint Candle:")
+#         print_in_chunks(candle_footprint)
 
-        vp = calculate_volume_profile(df)
-        print("calculate_volume_profile Candle:")
-        print_in_chunks(vp)
+#         # vp = calculate_volume_profile(df)
+#         # print("calculate_volume_profile Candle:")
+#         # print_in_chunks(vp)
 
 
 
-    #     vp_chart = calculate_advanced_volume_profile(df)
-    #     print("calculate_advanced_volume_profile Candle:")
-    #     print_in_chunks(vp_chart)
+#     #     vp_chart = calculate_advanced_volume_profile(df)
+#     #     print("calculate_advanced_volume_profile Candle:")
+#     #     print_in_chunks(vp_chart)
 
-    # filename = "./data/futures/BTC_USDT/BTCUSDT-bookTicker-2023-08-16.csv"
-    # df = read_bookticker_data(filename)
+#     # filename = "./data/futures/BTC_USDT/BTCUSDT-bookTicker-2023-08-16.csv"
+#     # df = read_bookticker_data(filename)
 
-    # candle_footprint = calculate_footprint(df,interval)
-    # print("Footprint Candle:", candle_footprint.tail(100))
+#     # candle_footprint = calculate_footprint(df,interval)
+#     # print("Footprint Candle:", candle_footprint.tail(100))
 
-        # interval = '30T'
-    # tpo_chart_letters, tpo_chart = calculate_tpo_agg(df)
-    # print("TPO chart:", tpo_chart_letters.tail(100),tpo_chart.tail(100))
+#         # interval = '30T'
+#     # tpo_chart_letters, tpo_chart = calculate_tpo_agg(df)
+#     # print("TPO chart:", tpo_chart_letters.tail(100),tpo_chart.tail(100))
