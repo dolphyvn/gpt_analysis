@@ -4,7 +4,6 @@ import asyncio
 from typing import List
 from binance import AsyncClient, BinanceSocketManager
 from dotenv import load_dotenv
-from loguru import logger
 from utils import store_aggregated_trades_to_db
 from datetime import datetime
 
