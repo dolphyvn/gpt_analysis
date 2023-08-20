@@ -205,7 +205,7 @@ if __name__ == "__main__":
     # logger.remove()
 
     # Load symbol from .env
-    symbol_list = [s.lower().strip() for s in os.getenv("symbols").split(",")]
+    symbol_list = [s.upper().strip() for s in os.getenv("symbols").split(",")]
 
     # Load intervals from .env
     intervals_list = [i.strip() for i in os.getenv("intervals").split(",")]

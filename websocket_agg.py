@@ -63,7 +63,7 @@ async def main(symbols: List[str], market: str):
 if __name__ == "__main__":
     load_dotenv()
 
-    symbol_list = [s.lower().strip() for s in os.getenv("symbols").split(",")]
+    symbol_list = [s.upper().strip() for s in os.getenv("symbols").split(",")]
     market_type = os.getenv("market").lower().strip()
 
     loop = asyncio.get_event_loop()
