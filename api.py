@@ -88,6 +88,67 @@ def get_aggregated_trades():
     return jsonify(aggregated_trades)
 
 
+# Additional function to get the opening and closing price
+def get_open_close(symbol, date):
+    data = query_db("""
+        SELECT open, close 
+        FROM klines 
+        WHERE symbol=? 
+        AND date(open_time/1000, 'unixepoch') = ? 
+        LIMIT 1
+    """, (symbol, date))
+    if data:
+        return {"open": data[0][0], "close": data[0][1]}
+    return {"open": None, "close": None}
+
+# Function to get the POC
+def get_poc(symbol, date):
+    data = query_db("""
+        SELECT price, SUM(quantity) AS total_volume 
+        FROM aggregated_trades 
+        WHERE symbol=? 
+        AND date(transact_time/1000, 'unixepoch') = ?
+        GROUP BY price 
+        ORDER BY total_volume DESC 
+        LIMIT 1
+    """, (symbol, date))
+    if data:
+        return {"poc_price": data[0][0], "poc_volume": data[0][1]}
+    return {"poc_price": None, "poc_volume": None}
+
+# Function to get volume for each price level
+def get_volume_per_price(symbol, date):
+    data = query_db("""
+        SELECT price, SUM(quantity) AS total_volume 
+        FROM aggregated_trades 
+        WHERE symbol=? 
+        AND date(transact_time/1000, 'unixepoch') = ?
+        GROUP BY price 
+        ORDER BY price
+    """, (symbol, date))
+    return [{"price": d[0], "volume": d[1]} for d in data]
+
+@app.route("/api/vp_data", methods=["GET"])
+def get_vp_data():
+    symbol = request.args.get('symbol')
+    date = request.args.get('date')  # expecting date in format YYYY-MM-DD
+    
+    if not symbol or not date:
+        return jsonify({"error": "Both symbol and date are required."}), 400
+
+    open_close = get_open_close(symbol, date)
+    poc = get_poc(symbol, date)
+    volume_data = get_volume_per_price(symbol, date)
+
+    return jsonify({
+        "open": open_close["open"],
+        "close": open_close["close"],
+        "poc": poc,
+        "volume_per_price": volume_data
+    })
+
+
+
 @app.route("/api/klines_aggregated_trades", methods=["GET"])
 def get_vp_data():
     symbol = request.args.get('symbol')
