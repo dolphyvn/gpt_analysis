@@ -5,17 +5,30 @@ app = Flask(__name__)
 
 DATABASE_NAME = "klines_data.db"
 
+DEFAULT_PAGE_SIZE = 100
+
+def query_db(query, args=(), one=False):
+    conn = sqlite3.connect(DATABASE_NAME)
+    cur = conn.cursor().execute(query, args)
+    rv = cur.fetchall()
+    conn.close()
+    return (rv[0] if rv else None) if one else rv
+
 @app.route("/api/klines", methods=["GET"])
 def get_klines():
-    conn = sqlite3.connect(DATABASE_NAME)
-    cursor = conn.cursor()
+    symbol = request.args.get('symbol')
+    interval = request.args.get('interval')
+    page = int(request.args.get('page', 1))
+    limit = int(request.args.get('limit', DEFAULT_PAGE_SIZE))
+    offset = (page - 1) * limit
 
-    # Fetching all klines (you can add pagination or filters if needed)
-    cursor.execute("SELECT * FROM klines")
-    data = cursor.fetchall()
-
-    # Close connection
-    conn.close()
+    if symbol and interval:
+        data = query_db("SELECT * FROM klines WHERE symbol=? AND interval=? LIMIT ? OFFSET ?", (symbol, interval, limit, offset))
+    elif symbol:
+        data = query_db("SELECT * FROM klines WHERE symbol=? LIMIT ? OFFSET ?", (symbol, limit, offset))
+    else:
+        data = query_db("SELECT * FROM klines LIMIT ? OFFSET ?", (limit, offset))
+    
 
     # Convert data to a list of dictionaries for JSON serialization
     # klines = [{"id": kline[0], "symbol": kline[1], ...} for kline in data]  # expand for all columns
@@ -45,16 +58,17 @@ def get_klines():
 
 @app.route("/api/aggregated_trades", methods=["GET"])
 def get_aggregated_trades():
-    conn = sqlite3.connect(DATABASE_NAME)
-    cursor = conn.cursor()
+    symbol = request.args.get('symbol')
+    page = int(request.args.get('page', 1))
+    limit = int(request.args.get('limit', DEFAULT_PAGE_SIZE))
+    offset = (page - 1) * limit
 
-    # Fetching all aggregated trades (you can add pagination or filters if needed)
-    cursor.execute("SELECT * FROM aggregated_trades")
-    data = cursor.fetchall()
+    if symbol:
+        data = query_db("SELECT * FROM aggregated_trades WHERE symbol=? LIMIT ? OFFSET ?", (symbol, limit, offset))
+    else:
+        data = query_db("SELECT * FROM aggregated_trades LIMIT ? OFFSET ?", (limit, offset))
 
-    # Close connection
-    conn.close()
-
+    
     # Convert data to a list of dictionaries for JSON serialization
     # aggregated_trades = [{"agg_trade_id": trade[0], "symbol": trade[1], ...} for trade in data]  # expand for all columns
     aggregated_trades = [
@@ -76,29 +90,23 @@ def get_aggregated_trades():
 
 @app.route("/api/klines_aggregated_trades", methods=["GET"])
 def get_vp_data():
-    symbol = request.args.get('symbol')  # Get symbol from query parameters
+    symbol = request.args.get('symbol')
+    interval = request.args.get('interval')
+    page = int(request.args.get('page', 1))
+    limit = int(request.args.get('limit', DEFAULT_PAGE_SIZE))
+    offset = (page - 1) * limit
 
-    conn = sqlite3.connect(DATABASE_NAME)
-    cursor = conn.cursor()
-
-    # Fetching klines
-    if symbol:
-        cursor.execute("SELECT * FROM klines WHERE symbol=?", (symbol,))
+    if symbol and interval:
+        klines_data = query_db("SELECT * FROM klines WHERE symbol=? AND interval=? LIMIT ? OFFSET ?", (symbol, interval, limit, offset))
+        aggregated_trades_data = query_db("SELECT * FROM aggregated_trades WHERE symbol=? LIMIT ? OFFSET ?", (symbol, limit, offset))
+    elif symbol:
+        klines_data = query_db("SELECT * FROM klines WHERE symbol=? LIMIT ? OFFSET ?", (symbol, limit, offset))
+        aggregated_trades_data = query_db("SELECT * FROM aggregated_trades WHERE symbol=? LIMIT ? OFFSET ?", (symbol, limit, offset))
     else:
-        cursor.execute("SELECT * FROM klines")
-    klines_data = cursor.fetchall()
-
-    # Fetching aggregated trades
-    if symbol:
-        cursor.execute("SELECT * FROM aggregated_trades WHERE symbol=?", (symbol,))
-    else:
-        cursor.execute("SELECT * FROM aggregated_trades")
-    aggregated_trades_data = cursor.fetchall()
-
-    # Close connection
-    conn.close()
-
-    # Convert data to a list of dictionaries for JSON serialization
+        klines_data = query_db("SELECT * FROM klines LIMIT ? OFFSET ?", (limit, offset))
+        aggregated_trades_data = query_db("SELECT * FROM aggregated_trades LIMIT ? OFFSET ?", (limit, offset))
+    
+    # Convert klines_data to a list of dictionaries
     klines = [
         {
             "id": kline[0],
@@ -117,11 +125,10 @@ def get_vp_data():
             "taker_buy_quote_asset_volume": kline[13],
             "ignore_column": kline[14]
         }
-        for kline in data
+        for kline in klines_data
     ]
 
-
-
+    # Convert aggregated_trades_data to a list of dictionaries
     aggregated_trades = [
         {
             "agg_trade_id": trade[0],
@@ -131,19 +138,18 @@ def get_vp_data():
             "first_trade_id": trade[4],
             "last_trade_id": trade[5],
             "transact_time": trade[6],
-            "is_buyer_maker": bool(trade[7])  # Convert integer to boolean for JSON
+            "is_buyer_maker": bool(trade[7])
         }
-        for trade in data
+        for trade in aggregated_trades_data
     ]
 
-
-    # Merge or join data. Here, we're just returning them as separate lists, but you can merge based on your criteria
     combined_data = {
         "klines": klines,
         "aggregated_trades": aggregated_trades
     }
 
     return jsonify(combined_data)
+
 
 
 # To run the API
