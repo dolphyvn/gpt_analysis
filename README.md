@@ -25,8 +25,84 @@ This repository is designed to facilitate trading analysis using advanced techni
     -   Run `websocket_agg.py` and `websocket_klines.py` to stream real-time data and store it in their respective tables.
 3.  **API Usage**:
     
-    -   Start the Flask server using `python api.py`.
-    -   Access the endpoints to fetch trading data. For example, use `/api/klines` to fetch klines data.
+	The project provides a Flask-based API for accessing the stored trading data.
+
+	 Starting the API:
+
+	Start the Flask server using the command:
+
+	bashCopy code
+
+	`python api.py` 
+
+	This will run the server on `http://localhost:5000/`.
+
+	Querying the API:
+
+	Here's a quick guide on how to access the data:
+
+	1.  **klines Endpoint**:
+	    
+	    -   **Fetch All Klines Data**:
+	        
+	        bashCopy code
+	        
+	        `GET http://localhost:5000/api/klines` 
+	        
+	    -   **Filter by Symbol**:
+	        
+	        bashCopy code
+	        
+	        `GET http://localhost:5000/api/klines?symbol=BTCUSD` 
+	        
+	    -   **Filter by Symbol and Interval**:
+	        
+	        bashCopy code
+	        
+	        `GET http://localhost:5000/api/klines?symbol=BTCUSD&interval=1h` 
+	        
+	2.  **aggregated_trades Endpoint**:
+	    
+	    -   **Fetch All Aggregated Trades Data**:
+	        
+	        bashCopy code
+	        
+	        `GET http://localhost:5000/api/aggregated_trades` 
+	        
+	    -   **Filter by Symbol**:
+	        
+	        bashCopy code
+	        
+	        `GET http://localhost:5000/api/aggregated_trades?symbol=BTCUSD` 
+	        
+	3.  **klines_aggregated_trades Endpoint**:
+	    
+	    -   **Fetch Combined Data of Klines and Aggregated Trades**:
+	        
+	        bashCopy code
+	        
+	        `GET http://localhost:5000/api/klines_aggregated_trades` 
+	        
+	    -   **Filter by Symbol**:
+	        
+	        bashCopy code
+	        
+	        `GET http://localhost:5000/api/klines_aggregated_trades?symbol=BTCUSD` 
+	        
+	    -   **Filter by Symbol and Interval**:
+	        
+	        bashCopy code
+	        
+	        `GET http://localhost:5000/api/klines_aggregated_trades?symbol=BTCUSD&interval=1h` 
+	        
+
+	Each endpoint supports pagination using `page` and `limit` parameters. For instance:
+
+	bashCopy code
+
+	`GET http://localhost:5000/api/klines?page=2&limit=50` 
+
+	This would fetch the second page of klines data with a limit of 50 records per page.
 4.  **Analysis with GPT-4**:
     
     -   Use the pre-configured prompts in the repository or craft custom prompts to get insights using the OpenAI's GPT-4 model.
