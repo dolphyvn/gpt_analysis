@@ -150,7 +150,7 @@ def get_vp_data():
 
 
 @app.route("/api/klines_aggregated_trades", methods=["GET"])
-def get_vp_data():
+def get_klines_agg_data():
     symbol = request.args.get('symbol')
     interval = request.args.get('interval')
     page = int(request.args.get('page', 1))
