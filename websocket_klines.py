@@ -186,7 +186,7 @@ async def main(symbols: List[str],intervals_list: List[str]):
             df[['Open', 'High', 'Low', 'Close', 'Volume']] = df[['Open', 'High', 'Low', 'Close', 'Volume']].apply(pd.to_numeric)
 
             # print(klines)
-            store_klines_to_db(klines,symbol,interval)
+            store_klines_to_db(klines,interval,symbol)
             # volume_profile = calculate_volume_profile(df)
 
             # # Renaming columns for clarity
