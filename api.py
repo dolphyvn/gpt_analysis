@@ -119,7 +119,7 @@ def get_poc(symbol, date):
 # Function to get volume for each price level
 def get_volume_per_price(symbol, date):
     data = query_db("""
-        SELECT price, SUM(quantity) AS total_volume 
+        SELECT transact_time, price, SUM(quantity) AS total_volume 
         FROM aggregated_trades 
         WHERE symbol=? 
         AND date(transact_time/1000, 'unixepoch') = ?
