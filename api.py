@@ -18,7 +18,7 @@ def query_db(query, args=(), one=False):
 
 
 def query_mysql(query, args=(), one=False):
-    conn = mysql.connector.connect(**DATABASE_CONFIG)  # <-- Changed connection logic
+    conn = mysql.connector.connect(**DB_CONFIG)  # <-- Changed connection logic
     cur = conn.cursor()
     cur.execute(query, args)
     rv = cur.fetchall()
@@ -28,17 +28,17 @@ def query_mysql(query, args=(), one=False):
 @app.route("/api/klines", methods=["GET"])
 def get_klines():
     symbol = request.args.get('symbol')
-    interval = request.args.get('interval')
+    timeframe = request.args.get('timeframe')
     page = int(request.args.get('page', 1))
     limit = int(request.args.get('limit', DEFAULT_PAGE_SIZE))
     offset = (page - 1) * limit
 
-    if symbol and interval:
-        data = query_mysql("SELECT * FROM klines WHERE symbol=? AND interval=? LIMIT ? OFFSET ?", (symbol, interval, limit, offset))
+    if symbol and timeframe:
+        data = query_mysql("SELECT * FROM klines WHERE symbol=%s AND timeframe=%s LIMIT %s OFFSET %s", (symbol, timeframe, limit, offset))
     elif symbol:
-        data = query_mysql("SELECT * FROM klines WHERE symbol=? LIMIT ? OFFSET ?", (symbol, limit, offset))
+        data = query_mysql("SELECT * FROM klines WHERE symbol=%s LIMIT %s OFFSET %s", (symbol, limit, offset))
     else:
-        data = query_mysql("SELECT * FROM klines LIMIT ? OFFSET ?", (limit, offset))
+        data = query_mysql("SELECT * FROM klines LIMIT %s OFFSET %s", (limit, offset))
     
 
     # Convert data to a list of dictionaries for JSON serialization
@@ -47,7 +47,7 @@ def get_klines():
         {
             "id": kline[0],
             "symbol": kline[1],
-            "interval": kline[2],
+            "timeframe": kline[2],
             "open_time": kline[3],
             "open": kline[4],
             "high": kline[5],
@@ -75,9 +75,9 @@ def get_aggregated_trades():
     offset = (page - 1) * limit
 
     if symbol:
-        data = query_mysql("SELECT * FROM aggregated_trades WHERE symbol=? LIMIT ? OFFSET ?", (symbol, limit, offset))
+        data = query_mysql("SELECT * FROM aggregated_trades WHERE symbol=%s LIMIT %s OFFSET %s", (symbol, limit, offset))
     else:
-        data = query_mysql("SELECT * FROM aggregated_trades LIMIT ? OFFSET ?", (limit, offset))
+        data = query_mysql("SELECT * FROM aggregated_trades LIMIT %s OFFSET %s", (limit, offset))
 
     
     # Convert data to a list of dictionaries for JSON serialization
@@ -104,8 +104,8 @@ def get_open_close(symbol, date):
     data = query_mysql("""
         SELECT open, close 
         FROM klines 
-        WHERE symbol=? 
-        AND date(open_time/1000, 'unixepoch') = ? 
+        WHERE symbol=%s 
+        AND DATE(FROM_UNIXTIME(open_time/1000)) = %s 
         LIMIT 1
     """, (symbol, date))
     if data:
@@ -117,8 +117,8 @@ def get_poc(symbol, date):
     data = query_mysql("""
         SELECT price, SUM(quantity) AS total_volume 
         FROM aggregated_trades 
-        WHERE symbol=? 
-        AND date(transact_time/1000, 'unixepoch') = ?
+        WHERE symbol=%s 
+        AND DATE(FROM_UNIXTIME(transact_time/1000)) = %s
         GROUP BY price 
         ORDER BY total_volume DESC 
         LIMIT 1
@@ -132,8 +132,8 @@ def get_volume_per_price(symbol, date):
     data = query_mysql("""
         SELECT price, GROUP_CONCAT(transact_time) AS transaction_times, SUM(quantity) AS total_volume 
         FROM aggregated_trades 
-        WHERE symbol=? 
-        AND date(transact_time/1000, 'unixepoch') = ?
+        WHERE symbol=%s 
+        AND DATE(FROM_UNIXTIME(transact_time/1000)) = %s
         GROUP BY price 
         ORDER BY price
     """, (symbol, date))
@@ -172,13 +172,13 @@ def get_vp_data():
 @app.route("/api/klines_aggregated_trades", methods=["GET"])
 def get_klines_agg_data():
     symbol = request.args.get('symbol')
-    interval = request.args.get('interval')
+    timeframe = request.args.get('timeframe')
     page = int(request.args.get('page', 1))
     limit = int(request.args.get('limit', DEFAULT_PAGE_SIZE))
     offset = (page - 1) * limit
 
-    if symbol and interval:
-        klines_data = query_mysql("SELECT * FROM klines WHERE symbol=? AND interval=? LIMIT ? OFFSET ?", (symbol, interval, limit, offset))
+    if symbol and timeframe:
+        klines_data = query_mysql("SELECT * FROM klines WHERE symbol=? AND timeframe=? LIMIT ? OFFSET ?", (symbol, timeframe, limit, offset))
         aggregated_trades_data = query_mysql("SELECT * FROM aggregated_trades WHERE symbol=? LIMIT ? OFFSET ?", (symbol, limit, offset))
     elif symbol:
         klines_data = query_mysql("SELECT * FROM klines WHERE symbol=? LIMIT ? OFFSET ?", (symbol, limit, offset))
@@ -192,7 +192,7 @@ def get_klines_agg_data():
         {
             "id": kline[0],
             "symbol": kline[1],
-            "interval": kline[2],
+            "timeframe": kline[2],
             "open_time": kline[3],
             "open": kline[4],
             "high": kline[5],

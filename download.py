@@ -4,6 +4,8 @@ import zipfile
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
 from utils import store_aggregated_trades_to_db
+from mysql_connector import store_aggregated_trades_to_mysql
+
 BASE_URL = "https://data.binance.vision/data/futures/um/"
 
 # DATA_TYPES = ["aggTrades", "bookTicker", "metrics", "liquidationSnapshot"]
@@ -90,9 +92,13 @@ def download_data(data_type, symbol, start_date, end_date):
 load_dotenv()
 # Usage example
 symbol_list = [s.strip() for s in os.getenv("symbols").split(",")]
+
 for symbol in symbol_list:
-    start_date = datetime(2023, 8,1)
-    end_date = datetime(2023, 8,20)
+    # Set end_date to today's date
+    end_date = datetime.today().date()
+    
+    # Set start_date to 29 days before the end_date (to make a range of 30 days including the end date)
+    start_date = end_date - timedelta(days=29)
 
     for data_type in DATA_TYPES:
         download_data(data_type, symbol, start_date, end_date)

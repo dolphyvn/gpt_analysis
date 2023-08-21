@@ -8,7 +8,7 @@ from collections import defaultdict
 import pandas as pd
 from utils import store_klines_to_db
 from datetime import datetime
-
+from mysql_connector import store_klines_to_mysql
 
 import pandas as pd
 
@@ -116,9 +116,9 @@ def get_limit_from_interval(interval: str) -> int:
         '6h': 120,
         '8h': 90,
         '12h': 60,
-        '1d': 120,
-        '1w': 24,
-        '1M': 6
+        '1d': 240,
+        '1w': 240,
+        '1M': 120
     }
     
     return conversions.get(interval, 720)  # default to 720 if interval is not found
