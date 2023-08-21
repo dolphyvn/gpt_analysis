@@ -126,7 +126,7 @@ def get_volume_per_price(symbol, date):
         GROUP BY price 
         ORDER BY price
     """, (symbol, date))
-    return [{"price": d[0], "volume": d[1]} for d in data]
+    return [{"transact_time": transact_time,"price": d[0], "volume": d[1]} for d in data]
 
 @app.route("/api/vp_data", methods=["GET"])
 def get_vp_data():
