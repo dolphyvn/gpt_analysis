@@ -55,9 +55,13 @@ async def main(symbols: List[str], market: str):
                 
                 # You can set a condition to store data after accumulating, say, 100 trades.
                 if len(aggregated_trades) > 10:
-                    store_aggregated_trades_to_db(aggregated_trades,trade_data[0])
-                    aggregated_trades = []
+                    if os.getenv('storage') == 'sqlite3':
+                        store_aggregated_trades_to_db(aggregated_trades,trade_data[0])
+                        aggregated_trades = []
 
+                    if os.getenv('storage') == 'mysql':
+                        store_aggregated_trades_to_mysql(aggregated_trades,trade_data[0])
+                        aggregated_trades = []
 
 
 if __name__ == "__main__":

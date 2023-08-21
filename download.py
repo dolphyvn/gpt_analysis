@@ -28,7 +28,10 @@ def read_csv_and_store(file_name, symbol):
             aggregated_trades_data.append(trade)
         
         # Now, store this processed data in the DB
-        store_aggregated_trades_to_db(aggregated_trades_data, symbol)
+        if os.getenv('storage') == 'mysql':
+            store_aggregated_trades_to_mysql(aggregated_trades_data, symbol)
+        if os.getenv('storage') == 'sqlite3':
+            store_aggregated_trades_to_db(aggregated_trades_data, symbol)        
 
 def download_data(data_type, symbol, start_date, end_date):
     """

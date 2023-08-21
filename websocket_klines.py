@@ -187,6 +187,8 @@ async def main(symbols: List[str],intervals_list: List[str]):
             df[['Open', 'High', 'Low', 'Close', 'Volume']] = df[['Open', 'High', 'Low', 'Close', 'Volume']].apply(pd.to_numeric)
             if os.getenv('storage') == 'sqlite3':
                 store_klines_to_db(klines,interval,symbol)
+            if os.getenv('storage') == 'mysql':
+                store_klines_to_mysql(klines,interval,symbol)
             else:
                 volume_profile = calculate_volume_profile(df)
 

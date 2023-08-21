@@ -1,5 +1,7 @@
 from flask import Flask, jsonify, request
 import sqlite3
+from mysql_connector import *
+
 
 app = Flask(__name__)
 
@@ -14,6 +16,15 @@ def query_db(query, args=(), one=False):
     conn.close()
     return (rv[0] if rv else None) if one else rv
 
+
+def query_mysql(query, args=(), one=False):
+    conn = mysql.connector.connect(**DATABASE_CONFIG)  # <-- Changed connection logic
+    cur = conn.cursor()
+    cur.execute(query, args)
+    rv = cur.fetchall()
+    conn.close()
+    return (rv[0] if rv else None) if one else rv
+
 @app.route("/api/klines", methods=["GET"])
 def get_klines():
     symbol = request.args.get('symbol')
@@ -23,11 +34,11 @@ def get_klines():
     offset = (page - 1) * limit
 
     if symbol and interval:
-        data = query_db("SELECT * FROM klines WHERE symbol=? AND interval=? LIMIT ? OFFSET ?", (symbol, interval, limit, offset))
+        data = query_mysql("SELECT * FROM klines WHERE symbol=? AND interval=? LIMIT ? OFFSET ?", (symbol, interval, limit, offset))
     elif symbol:
-        data = query_db("SELECT * FROM klines WHERE symbol=? LIMIT ? OFFSET ?", (symbol, limit, offset))
+        data = query_mysql("SELECT * FROM klines WHERE symbol=? LIMIT ? OFFSET ?", (symbol, limit, offset))
     else:
-        data = query_db("SELECT * FROM klines LIMIT ? OFFSET ?", (limit, offset))
+        data = query_mysql("SELECT * FROM klines LIMIT ? OFFSET ?", (limit, offset))
     
 
     # Convert data to a list of dictionaries for JSON serialization
@@ -64,9 +75,9 @@ def get_aggregated_trades():
     offset = (page - 1) * limit
 
     if symbol:
-        data = query_db("SELECT * FROM aggregated_trades WHERE symbol=? LIMIT ? OFFSET ?", (symbol, limit, offset))
+        data = query_mysql("SELECT * FROM aggregated_trades WHERE symbol=? LIMIT ? OFFSET ?", (symbol, limit, offset))
     else:
-        data = query_db("SELECT * FROM aggregated_trades LIMIT ? OFFSET ?", (limit, offset))
+        data = query_mysql("SELECT * FROM aggregated_trades LIMIT ? OFFSET ?", (limit, offset))
 
     
     # Convert data to a list of dictionaries for JSON serialization
@@ -90,7 +101,7 @@ def get_aggregated_trades():
 
 # Additional function to get the opening and closing price
 def get_open_close(symbol, date):
-    data = query_db("""
+    data = query_mysql("""
         SELECT open, close 
         FROM klines 
         WHERE symbol=? 
@@ -103,7 +114,7 @@ def get_open_close(symbol, date):
 
 # Function to get the POC
 def get_poc(symbol, date):
-    data = query_db("""
+    data = query_mysql("""
         SELECT price, SUM(quantity) AS total_volume 
         FROM aggregated_trades 
         WHERE symbol=? 
@@ -118,7 +129,7 @@ def get_poc(symbol, date):
 
 # Function to get volume and transaction times for each price level
 def get_volume_per_price(symbol, date):
-    data = query_db("""
+    data = query_mysql("""
         SELECT price, GROUP_CONCAT(transact_time) AS transaction_times, SUM(quantity) AS total_volume 
         FROM aggregated_trades 
         WHERE symbol=? 
@@ -167,14 +178,14 @@ def get_klines_agg_data():
     offset = (page - 1) * limit
 
     if symbol and interval:
-        klines_data = query_db("SELECT * FROM klines WHERE symbol=? AND interval=? LIMIT ? OFFSET ?", (symbol, interval, limit, offset))
-        aggregated_trades_data = query_db("SELECT * FROM aggregated_trades WHERE symbol=? LIMIT ? OFFSET ?", (symbol, limit, offset))
+        klines_data = query_mysql("SELECT * FROM klines WHERE symbol=? AND interval=? LIMIT ? OFFSET ?", (symbol, interval, limit, offset))
+        aggregated_trades_data = query_mysql("SELECT * FROM aggregated_trades WHERE symbol=? LIMIT ? OFFSET ?", (symbol, limit, offset))
     elif symbol:
-        klines_data = query_db("SELECT * FROM klines WHERE symbol=? LIMIT ? OFFSET ?", (symbol, limit, offset))
-        aggregated_trades_data = query_db("SELECT * FROM aggregated_trades WHERE symbol=? LIMIT ? OFFSET ?", (symbol, limit, offset))
+        klines_data = query_mysql("SELECT * FROM klines WHERE symbol=? LIMIT ? OFFSET ?", (symbol, limit, offset))
+        aggregated_trades_data = query_mysql("SELECT * FROM aggregated_trades WHERE symbol=? LIMIT ? OFFSET ?", (symbol, limit, offset))
     else:
-        klines_data = query_db("SELECT * FROM klines LIMIT ? OFFSET ?", (limit, offset))
-        aggregated_trades_data = query_db("SELECT * FROM aggregated_trades LIMIT ? OFFSET ?", (limit, offset))
+        klines_data = query_mysql("SELECT * FROM klines LIMIT ? OFFSET ?", (limit, offset))
+        aggregated_trades_data = query_mysql("SELECT * FROM aggregated_trades LIMIT ? OFFSET ?", (limit, offset))
     
     # Convert klines_data to a list of dictionaries
     klines = [
