@@ -10,6 +10,14 @@ services:
       - "3306:3306"
     volumes:
       - mysql_data:/var/lib/mysql
+  api:
+    build: ./
+    volumes:
+      - ./:/app
+    links:
+      - mysql
+    ports:
+      - "5000:5000"
 
 volumes:
   mysql_data:
