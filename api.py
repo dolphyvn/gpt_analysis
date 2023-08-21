@@ -129,7 +129,8 @@ def get_poc(symbol, date):
 
 # Function to get volume and transaction times for each price level
 def get_volume_per_price(symbol, date):
-    data = query_mysql("""
+    # First, get volume and transaction times for each price level from aggregated_trades
+    aggregated_data = query_mysql("""
         SELECT price, GROUP_CONCAT(transact_time) AS transaction_times, SUM(quantity) AS total_volume 
         FROM aggregated_trades 
         WHERE symbol=%s 
@@ -138,14 +139,32 @@ def get_volume_per_price(symbol, date):
         ORDER BY price
     """, (symbol, date))
 
-    return [
-        {
-            "price": d[0], 
-            "transaction_times": list(map(int, d[1].split(','))),  # convert comma-separated string back to a list of integers
-            "volume": d[2]
-        } 
-        for d in data
-    ]
+    result = []
+    for d in aggregated_data:
+        price = d[0]
+        transaction_times = list(map(int, d[1].split(',')))
+        volume = d[2]
+        
+        # Query klines to get the duration for which the price remained at the aggregated trade price
+        kline_durations = query_mysql("""
+            SELECT SUM(close_time - open_time) 
+            FROM klines 
+            WHERE symbol=%s 
+            AND DATE(FROM_UNIXTIME(close_time/1000)) = %s 
+            AND close=%s
+        """, (symbol, date, price))
+
+        # Assuming the SQL returns a single row with the sum of the durations
+        duration = kline_durations[0][0] if kline_durations else 0
+
+        result.append({
+            "price": price,
+            "transaction_times": transaction_times,
+            "volume": volume,
+            "duration": duration  # duration for which the price remained at that level
+        })
+
+    return result
 
 
 @app.route("/api/vp_data", methods=["GET"])
