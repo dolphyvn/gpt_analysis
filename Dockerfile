@@ -16,6 +16,7 @@ COPY requirements.txt /app
 RUN pip install -r requirements.txt
 
 # Run api.py when the container launches
-COPY api.py mysql_connector.py /app
+COPY api.py  /app
+COPY mysql_connector.py /app
 COPY .env /app
 CMD ["python","api.py"]
