@@ -150,3 +150,57 @@ def store_aggregated_trades_to_mysql(aggregated_trades_data, symbol):
     finally:
         cursor.close()
         connection.close()
+
+def store_bookticker_to_mysql(bookticker_data, symbol):
+    connection = create_connection()
+    if not connection:
+        return
+
+    cursor = connection.cursor()
+
+    create_bookticker_table_query = """
+    CREATE TABLE IF NOT EXISTS bookticker (
+        update_id BIGINT PRIMARY KEY,
+        symbol VARCHAR(255) NOT NULL,
+        best_bid_price DOUBLE NOT NULL,
+        best_bid_qty DOUBLE NOT NULL,
+        best_ask_price DOUBLE NOT NULL,
+        best_ask_qty DOUBLE NOT NULL,
+        transaction_time BIGINT NOT NULL,
+        event_time BIGINT NOT NULL,
+        UNIQUE KEY idx_symbol_transaction_time (symbol, transaction_time)
+    )
+    """
+    cursor.execute(create_bookticker_table_query)
+    
+    bookticker_with_symbol = [(data[0], symbol, *data[1:]) for data in bookticker_data]
+
+    insert_bookticker_query = """
+    INSERT INTO bookticker 
+    (update_id, symbol, best_bid_price, best_bid_qty, best_ask_price, best_ask_qty, 
+     transaction_time, event_time)
+    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+    ON DUPLICATE KEY UPDATE
+    best_bid_price = VALUES(best_bid_price),
+    best_bid_qty = VALUES(best_bid_qty),
+    best_ask_price = VALUES(best_ask_price),
+    best_ask_qty = VALUES(best_ask_qty),
+    transaction_time = VALUES(transaction_time),
+    event_time = VALUES(event_time)
+    """
+    
+    # Break data into chunks and use transactions
+    chunk_size = 1000
+    connection.start_transaction()
+    try:
+        for i in range(0, len(bookticker_with_symbol), chunk_size):
+            chunk = bookticker_with_symbol[i:i+chunk_size]
+            cursor.executemany(insert_bookticker_query, chunk)
+        connection.commit()
+    except:
+        connection.rollback()
+        raise
+    finally:
+        cursor.close()
+        connection.close()
+

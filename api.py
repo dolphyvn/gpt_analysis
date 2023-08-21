@@ -128,7 +128,7 @@ def get_poc(symbol, date):
     return {"poc_price": None, "poc_volume": None}
 
 # Function to get volume and transaction times for each price level
-def get_volume_per_price(symbol, date):
+def get_volume_per_price_(symbol, date):
     # First, get volume and transaction times for each price level from aggregated_trades
     aggregated_data = query_mysql("""
         SELECT price, GROUP_CONCAT(transact_time) AS transaction_times, SUM(quantity) AS total_volume 
@@ -167,17 +167,53 @@ def get_volume_per_price(symbol, date):
     return result
 
 
+def get_volume_per_price(symbol, date, limit, offset, price_difference=5.0):
+    # Adjusted query to fully comply with ONLY_FULL_GROUP_BY SQL mode and added LIMIT/OFFSET
+    aggregated_data = query_mysql("""
+        SELECT 
+            FLOOR(price / %s) * %s AS price_bin_start, 
+            (FLOOR(price / %s) + 1) * %s AS price_bin_end,
+            GROUP_CONCAT(transact_time) AS transaction_times, 
+            SUM(quantity) AS total_volume 
+        FROM aggregated_trades 
+        WHERE symbol=%s 
+        AND DATE(FROM_UNIXTIME(transact_time/1000)) = %s
+        GROUP BY price_bin_start, price_bin_end
+        ORDER BY price_bin_start
+        LIMIT %s OFFSET %s
+    """, (price_difference, price_difference, price_difference, price_difference, symbol, date, limit, offset))
+
+    result = []
+    for d in aggregated_data:
+        price_bin_start = d[0]
+        price_bin_end = d[1]
+        transaction_times = list(map(int, d[2].split(',')))
+        volume = d[3]
+
+        result.append({
+            "price_bin_start": price_bin_start,
+            "price_bin_end": price_bin_end,
+            "transaction_times": transaction_times,
+            "volume": volume
+        })
+
+    return result
+
+
+
 @app.route("/api/vp_data", methods=["GET"])
 def get_vp_data():
     symbol = request.args.get('symbol')
     date = request.args.get('date')  # expecting date in format YYYY-MM-DD
+    page = int(request.args.get('page', 1))  # default to first page
+    limit = int(request.args.get('limit', 10))  # default limit to 10 items per page
     
     if not symbol or not date:
         return jsonify({"error": "Both symbol and date are required."}), 400
 
     open_close = get_open_close(symbol, date)
     poc = get_poc(symbol, date)
-    volume_data = get_volume_per_price(symbol, date)
+    volume_data = get_volume_per_price(symbol, date, limit, (page - 1) * limit)
 
     return jsonify({
         "open": open_close["open"],
@@ -185,6 +221,7 @@ def get_vp_data():
         "poc": poc,
         "volume_per_price": volume_data
     })
+
 
 
 
