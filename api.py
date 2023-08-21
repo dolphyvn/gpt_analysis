@@ -116,17 +116,26 @@ def get_poc(symbol, date):
         return {"poc_price": data[0][0], "poc_volume": data[0][1]}
     return {"poc_price": None, "poc_volume": None}
 
-# Function to get volume for each price level
+# Function to get volume and transaction times for each price level
 def get_volume_per_price(symbol, date):
     data = query_db("""
-        SELECT transact_time, price, SUM(quantity) AS total_volume 
+        SELECT price, GROUP_CONCAT(transact_time) AS transaction_times, SUM(quantity) AS total_volume 
         FROM aggregated_trades 
         WHERE symbol=? 
         AND date(transact_time/1000, 'unixepoch') = ?
         GROUP BY price 
         ORDER BY price
     """, (symbol, date))
-    return [{"transact_time": transact_time,"price": d[0], "volume": d[1]} for d in data]
+
+    return [
+        {
+            "price": d[0], 
+            "transaction_times": list(map(int, d[1].split(','))),  # convert comma-separated string back to a list of integers
+            "volume": d[2]
+        } 
+        for d in data
+    ]
+
 
 @app.route("/api/vp_data", methods=["GET"])
 def get_vp_data():
