@@ -1,0 +1,11 @@
+version: '3'
+
+services:
+  mysql:
+    image: mysql:latest
+    environment:
+      MYSQL_ROOT_PASSWORD: root12345   # Set your desired root password here
+      MYSQL_DATABASE: gptanalytics  # Optionally, set a default database name
+    volumes:
+      - /opt/mysql/data:/var/lib/mysql
+    network_mode: "host"
