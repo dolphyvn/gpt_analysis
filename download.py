@@ -98,7 +98,7 @@ for symbol in symbol_list:
     end_date = datetime.today().date()
     
     # Set start_date to 29 days before the end_date (to make a range of 30 days including the end date)
-    start_date = end_date - timedelta(days=os.getenv('lookback'))
+    start_date = end_date - timedelta(days=int(os.getenv('lookback')))
 
     for data_type in DATA_TYPES:
         download_data(data_type, symbol, start_date, end_date)
