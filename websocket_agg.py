@@ -6,7 +6,7 @@ from binance import AsyncClient, BinanceSocketManager
 from dotenv import load_dotenv
 from utils import store_aggregated_trades_to_db
 from datetime import datetime
-
+from mysql_connector import store_aggregated_trades_to_mysql
 
 
 def process_message(msg: dict):
@@ -29,22 +29,31 @@ async def main(symbols: List[str], market: str):
 
     client = await AsyncClient.create()
     bsm = BinanceSocketManager(client)
-    symbols = [f"{s}@aggTrade" for s in symbols]
+    agg_symbol = [f"{s}@aggTrade" for s in symbols]
 
     aggregated_trades = []
 
     if market == "future":
-        async with bsm.futures_multiplex_socket(symbols) as socket:
+        async with bsm.futures_multiplex_socket(agg_symbol) as socket:
             while True:
                 res = await socket.recv()
+                print(res)
                 trade_data = process_message(res)
+                print(trade_data)
                 aggregated_trades.append(trade_data)
-                print(aggregated_trades)
+                
                 # You can set a condition to store data after accumulating, say, 100 trades.
                 if len(aggregated_trades) > 10:
+                    if os.getenv('storage') == 'sqlite3':
+                        store_aggregated_trades_to_db(aggregated_trades,trade_data[0])
+                        aggregated_trades = []
 
-                    store_aggregated_trades_to_mysql(aggregated_trades,trade_data[0])
-                    aggregated_trades = []
+                    if os.getenv('storage') == 'mysql':
+                        store_aggregated_trades_to_mysql(aggregated_trades,trade_data[0])
+                        aggregated_trades = []
+                    else:
+                        print("save to csv")
+                        print(aggregated_trades)
     else:
         async with bsm.multiplex_socket(symbols) as socket:
             while True:
@@ -69,7 +78,7 @@ async def main(symbols: List[str], market: str):
 if __name__ == "__main__":
     load_dotenv()
 
-    symbol_list = [s.upper().strip() for s in os.getenv("symbols").split(",")]
+    symbol_list = [s.lower().strip() for s in os.getenv("symbols").split(",")]
     market_type = os.getenv("market").lower().strip()
 
     loop = asyncio.get_event_loop()

@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta
 
-start_date = datetime(2023, 8, 23)
+start_date = datetime(2023, 6, 3)
 end_date = start_date + timedelta(days=1)
 
 start_timestamp = int(start_date.timestamp() * 1000)  # Convert to milliseconds
