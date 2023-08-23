@@ -124,17 +124,24 @@ def store_aggregated_trades_to_mysql(aggregated_trades_data, symbol):
     
     aggregated_trades_with_symbol = [(trade[1], symbol, *trade[2:]) for trade in aggregated_trades_data]
 
+    # insert_aggregated_trades_query = """
+    # INSERT INTO aggregated_trades 
+    # (agg_trade_id, symbol, price, quantity, first_trade_id, last_trade_id, transact_time, is_buyer_maker)
+    # VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+    # ON DUPLICATE KEY UPDATE
+    # price = VALUES(price),
+    # quantity = VALUES(quantity),
+    # first_trade_id = VALUES(first_trade_id),
+    # last_trade_id = VALUES(last_trade_id),
+    # is_buyer_maker = VALUES(is_buyer_maker)
+    # """
+
     insert_aggregated_trades_query = """
-    INSERT INTO aggregated_trades 
+    INSERT IGNORE INTO aggregated_trades 
     (agg_trade_id, symbol, price, quantity, first_trade_id, last_trade_id, transact_time, is_buyer_maker)
     VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-    ON DUPLICATE KEY UPDATE
-    price = VALUES(price),
-    quantity = VALUES(quantity),
-    first_trade_id = VALUES(first_trade_id),
-    last_trade_id = VALUES(last_trade_id),
-    is_buyer_maker = VALUES(is_buyer_maker)
     """
+
     
     # Break data into chunks and use transactions
     chunk_size = 1000

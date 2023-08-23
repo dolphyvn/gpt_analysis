@@ -1,6 +1,7 @@
 from flask import Flask, jsonify, request
 import sqlite3
 from mysql_connector import *
+from math import ceil
 
 
 app = Flask(__name__)
@@ -16,6 +17,10 @@ def query_db(query, args=(), one=False):
     conn.close()
     return (rv[0] if rv else None) if one else rv
 
+def get_total_pages(table_name, limit, where_clause="", where_params=()):
+    count_query = f"SELECT COUNT(*) FROM {table_name} {where_clause}"
+    total_rows = query_mysql(count_query, where_params)[0][0]
+    return ceil(total_rows / limit)
 
 def query_mysql(query, args=(), one=False):
     conn = mysql.connector.connect(**DB_CONFIG)  # <-- Changed connection logic
@@ -64,7 +69,21 @@ def get_klines():
         for kline in data
     ]
 
-    return jsonify(klines)
+    where_clause = ""
+    where_params = ()
+    if symbol and timeframe:
+        where_clause = "WHERE symbol=%s AND timeframe=%s"
+        where_params = (symbol, timeframe)
+    elif symbol:
+        where_clause = "WHERE symbol=%s"
+        where_params = (symbol,)
+
+    total_pages = get_total_pages("klines", limit, where_clause, where_params)
+
+    return jsonify({
+        "total_pages": total_pages,
+        "klines": klines
+    })
 
 
 @app.route("/api/aggregated_trades", methods=["GET"])
@@ -96,7 +115,18 @@ def get_aggregated_trades():
         for trade in data
     ]
 
-    return jsonify(aggregated_trades)
+    where_clause = ""
+    where_params = ()
+    if symbol:
+        where_clause = "WHERE symbol=%s"
+        where_params = (symbol,)
+
+    total_pages = get_total_pages("aggregated_trades", limit, where_clause, where_params)
+
+    return jsonify({
+        "total_pages": total_pages,
+        "aggregated_trades": aggregated_trades
+    })
 
 
 # Additional function to get the opening and closing price
@@ -215,13 +245,17 @@ def get_vp_data():
     poc = get_poc(symbol, date)
     volume_data = get_volume_per_price(symbol, date, limit, (page - 1) * limit)
 
+    where_clause = "WHERE symbol=%s AND DATE(FROM_UNIXTIME(transact_time/1000)) = %s"
+    where_params = (symbol, date)
+    total_pages = get_total_pages("aggregated_trades", limit, where_clause, where_params)
+
     return jsonify({
+        "total_pages": total_pages,
         "open": open_close["open"],
         "close": open_close["close"],
         "poc": poc,
         "volume_per_price": volume_data
     })
-
 
 
 

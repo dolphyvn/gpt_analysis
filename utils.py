@@ -201,6 +201,61 @@ def volume_by_price(df, interval='30T'):
     return results_df
 
 
+def calculate_volume_profile_agg(df, price_range=0.1, value_area_percentage=0.7, interval="240T"):
+    df['transact_time'] = pd.to_datetime(df['transact_time'], unit='ms')  # Convert transact_time to datetime, assuming it's in milliseconds
+    df.set_index('transact_time', inplace=True)
+    df_resampled = df.resample(interval).apply(list)
+
+    results = []
+
+    for idx, row in df_resampled.iterrows():
+        if not row['price']:
+            continue
+
+        interval_df = pd.DataFrame({
+            'price': row['price'],
+            'quantity': row['quantity'],
+            'is_buyer_maker': row['is_buyer_maker']
+        })
+
+        # Volume per price level
+        df_grouped = interval_df.groupby(pd.cut(interval_df['price'], bins=pd.interval_range(start=interval_df['price'].min(), end=interval_df['price'].max(), freq=price_range)))['quantity'].sum()
+
+        # POC
+        poc_price = df_grouped.idxmax().mid
+
+        # Delta
+        interval_df['delta'] = interval_df['quantity'].where(interval_df['is_buyer_maker'], -interval_df['quantity'])
+        delta = interval_df['delta'].sum()
+
+        # HVN and LVN
+        df_grouped_sorted = df_grouped.sort_values(ascending=False)
+        hvn_price = df_grouped_sorted.index[1].mid if len(df_grouped_sorted) > 1 else None
+        lvn_price = df_grouped_sorted.index[-1].mid if len(df_grouped_sorted) > 1 else None
+
+        # Value Area
+        df_grouped_sorted_cumsum = df_grouped_sorted.cumsum()
+        df_in_value_area = df_grouped_sorted[df_grouped_sorted_cumsum <= df_grouped.sum() * value_area_percentage]
+        value_area_high = df_in_value_area.index.max().mid
+        value_area_low = df_in_value_area.index.min().mid
+
+        # Volume Gap
+        volume_gaps = df_grouped[df_grouped == 0].index.tolist()
+
+        results.append({
+            'Interval_Start': idx,
+            'POC': poc_price,
+            'Delta': delta,
+            'HVN': hvn_price,
+            'LVN': lvn_price,
+            'Value_Area_High': value_area_high,
+            'Value_Area_Low': value_area_low,
+            'Volume_Gaps': volume_gaps
+        })
+
+    return pd.DataFrame(results)
+
+
 def calculate_advanced_volume_profile(df, interval="30T"):
     # Calculate the total volume for the entire DataFrame
     total_volume = df['quantity'].sum()
@@ -226,6 +281,7 @@ def calculate_advanced_volume_profile(df, interval="30T"):
         
         interval_df = df[(df['transact_time'] >= start_time) & (df['transact_time'] < end_time)].copy()
 
+        print(f"Interval {interval_df}")
         # Total volume within this interval
         interval_total_volume = interval_df['quantity'].sum()
 
@@ -803,7 +859,7 @@ def print_in_chunks(df, chunk_size=50):
         print(df[start_idx:end_idx])
         # input("Press Enter to see the next chunk...")  # Wait for the user to press Enter before showing the next chunk
 
-def list_files(directory, prefix="2023-08-18"):
+def list_files(symbol,directory, prefix="2023-08-"):
     """
     List all files in the specified directory that start with the given prefix.
 
@@ -812,7 +868,7 @@ def list_files(directory, prefix="2023-08-18"):
     :return: A list of matching filenames.
     """
     files = os.listdir(directory)
-    return [f for f in files if f.startswith("BTCUSDT-aggTrades-" + prefix)]
+    return [f for f in files if f.startswith(symbol+"-aggTrades-" + prefix)]
 
 # Use the function
 # directory_path = "/opt/works/personal/gpt_analysis/data/futures/BTC_USDT"

@@ -43,7 +43,7 @@ async def main(symbols: List[str], market: str):
                 # You can set a condition to store data after accumulating, say, 100 trades.
                 if len(aggregated_trades) > 10:
 
-                    store_aggregated_trades_to_db(aggregated_trades,trade_data[0])
+                    store_aggregated_trades_to_mysql(aggregated_trades,trade_data[0])
                     aggregated_trades = []
     else:
         async with bsm.multiplex_socket(symbols) as socket:
@@ -62,6 +62,8 @@ async def main(symbols: List[str], market: str):
                     if os.getenv('storage') == 'mysql':
                         store_aggregated_trades_to_mysql(aggregated_trades,trade_data[0])
                         aggregated_trades = []
+                    else:
+                        print("save to csv")
 
 
 if __name__ == "__main__":

@@ -106,9 +106,9 @@ def get_limit_from_interval(interval: str) -> int:
     """
     
     conversions = {
-        '1m': 43200,
-        '5m': 8640,
-        '15m': 2880,
+        '1m': 240,
+        '5m': 60,
+        '15m': 120,
         '30m': 1440,
         '1h': 720,
         '3h': 240,
