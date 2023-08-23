@@ -110,7 +110,7 @@ def store_aggregated_trades_to_mysql(aggregated_trades_data, symbol):
     create_aggregated_trades_table_query = """
     CREATE TABLE IF NOT EXISTS aggregated_trades (
         agg_trade_id BIGINT PRIMARY KEY,
-        symbol VARCHAR(255) NOT NULL,
+        symbol VARCHAR(10) NOT NULL,
         price DOUBLE NOT NULL,
         quantity DOUBLE NOT NULL,
         first_trade_id BIGINT NOT NULL,
@@ -118,7 +118,7 @@ def store_aggregated_trades_to_mysql(aggregated_trades_data, symbol):
         transact_time BIGINT NOT NULL,
         is_buyer_maker BOOLEAN NOT NULL,
         UNIQUE KEY idx_symbol_transact_time (symbol, transact_time)
-        
+
     ) ENGINE=MyISAM;
     """
     cursor.execute(create_aggregated_trades_table_query)
