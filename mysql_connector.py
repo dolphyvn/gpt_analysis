@@ -44,8 +44,8 @@ def store_klines_to_mysql(klines_data, timeframe, symbol):
     create_klines_table_query = """
     CREATE TABLE IF NOT EXISTS klines (
         id INT AUTO_INCREMENT PRIMARY KEY,
-        symbol VARCHAR(255) NOT NULL,
-        timeframe VARCHAR(255) NOT NULL,
+        symbol VARCHAR(10) NOT NULL,
+        timeframe VARCHAR(10) NOT NULL,
         open_time BIGINT NOT NULL,
         open DOUBLE NOT NULL,
         high DOUBLE NOT NULL,
@@ -58,8 +58,8 @@ def store_klines_to_mysql(klines_data, timeframe, symbol):
         taker_buy_base_asset_volume DOUBLE NOT NULL,
         taker_buy_quote_asset_volume DOUBLE NOT NULL,
         ignore_column DOUBLE NOT NULL,
-        UNIQUE KEY idx_klines_symbol_timeframe_open_time (symbol, timeframe, open_time)
-    )
+        UNIQUE KEY idx_klines_symbol_timeframe_open_time (symbol, timeframe, open_time,close_time)
+    ) ENGINE=MyISAM;
     """
     cursor.execute(create_klines_table_query)
 
@@ -118,7 +118,8 @@ def store_aggregated_trades_to_mysql(aggregated_trades_data, symbol):
         transact_time BIGINT NOT NULL,
         is_buyer_maker BOOLEAN NOT NULL,
         UNIQUE KEY idx_symbol_transact_time (symbol, transact_time)
-    )
+        
+    ) ENGINE=MyISAM;
     """
     cursor.execute(create_aggregated_trades_table_query)
     
@@ -183,18 +184,12 @@ def store_bookticker_to_mysql(bookticker_data, symbol):
     bookticker_with_symbol = [(data[0], symbol, *data[1:]) for data in bookticker_data]
 
     insert_bookticker_query = """
-    INSERT INTO bookticker 
+    INSERT IGNORE INTO bookticker 
     (update_id, symbol, best_bid_price, best_bid_qty, best_ask_price, best_ask_qty, 
      transaction_time, event_time)
     VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-    ON DUPLICATE KEY UPDATE
-    best_bid_price = VALUES(best_bid_price),
-    best_bid_qty = VALUES(best_bid_qty),
-    best_ask_price = VALUES(best_ask_price),
-    best_ask_qty = VALUES(best_ask_qty),
-    transaction_time = VALUES(transaction_time),
-    event_time = VALUES(event_time)
     """
+
     
     # Break data into chunks and use transactions
     chunk_size = 1000
