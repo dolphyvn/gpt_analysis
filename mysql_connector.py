@@ -24,6 +24,15 @@ def query_mysql(query, args=(), one=False):
     conn.close()
     return (rv[0] if rv else None) if one else rv
 
+# def query_mysql(query, args=(), one=False):
+#     conn = mysql.connector.connect(**DB_CONFIG)  # <-- Changed connection logic
+#     cur = conn.cursor()
+#     cur.execute(query, args)
+#     rv = cur.fetchall()
+#     conn.close()
+#     return (rv[0] if rv else None) if one else rv
+
+
 def create_connection():
     try:
         connection = mysql.connector.connect(**DB_CONFIG)

@@ -9,8 +9,9 @@ import pandas as pd
 from utils import store_klines_to_db
 from datetime import datetime
 from mysql_connector import store_klines_to_mysql
-
+from vp import calculate_vp
 import pandas as pd
+from utils import calculate_advanced_volume_profile as cavp
 
 def calculate_volume_profile(df):
     # Convert the epoch timestamp to human-readable datetime format
@@ -106,7 +107,7 @@ def get_limit_from_interval(interval: str) -> int:
     """
     
     conversions = {
-        '1m': 240,
+        '1m': 120,
         '5m': 60,
         '15m': 120,
         '30m': 1440,
@@ -190,17 +191,17 @@ async def main(symbols: List[str],intervals_list: List[str]):
             if os.getenv('storage') == 'mysql':
                 store_klines_to_mysql(klines,interval,symbol)
             else:
-                volume_profile = calculate_volume_profile(df)
+                volume_profile = cavp(df)
 
                 # Renaming columns for clarity
-                volume_profile.rename(columns={
-                    'Volume_x': 'Volume',
-                    'Volume_y': 'Aggregated_Volume_by_Close_Price'
-                }, inplace=True)
+                # volume_profile.rename(columns={
+                #     'Volume_x': 'Volume',
+                #     'Volume_y': 'Aggregated_Volume_by_Close_Price'
+                # }, inplace=True)
 
-                store_to_file(volume_profile,symbol,interval)
+                # store_to_file(volume_profile,symbol,interval)
                 # print(f"Volume profile for {symbol}:", volume_profile)  # Print top 10 volume profiles
-                print_in_chunks(volume_profile)
+                # print_in_chunks(volume_profile)
 
 if __name__ == "__main__":
     load_dotenv()

@@ -10,25 +10,28 @@ DATABASE_NAME = "klines_data.db"
 
 DEFAULT_PAGE_SIZE = 100
 
-def query_db(query, args=(), one=False):
-    conn = sqlite3.connect(DATABASE_NAME)
-    cur = conn.cursor().execute(query, args)
-    rv = cur.fetchall()
-    conn.close()
-    return (rv[0] if rv else None) if one else rv
+# def query_db(query, args=(), one=False):
+#     conn = sqlite3.connect(DATABASE_NAME)
+#     cur = conn.cursor().execute(query, args)
+#     rv = cur.fetchall()
+#     conn.close()
+#     return (rv[0] if rv else None) if one else rv
 
 def get_total_pages(table_name, limit, where_clause="", where_params=()):
     count_query = f"SELECT COUNT(*) FROM {table_name} {where_clause}"
     total_rows = query_mysql(count_query, where_params)[0][0]
     return ceil(total_rows / limit)
 
-def query_mysql(query, args=(), one=False):
-    conn = mysql.connector.connect(**DB_CONFIG)  # <-- Changed connection logic
-    cur = conn.cursor()
-    cur.execute(query, args)
-    rv = cur.fetchall()
-    conn.close()
-    return (rv[0] if rv else None) if one else rv
+@app.route('/atas', methods=['POST'])
+def receive_data():
+    # Extract data from POST request
+    data = request.json
+
+    # Here you can process or store the data as needed.
+    # For the purpose of this example, we'll simply return the received data.
+    print(jsonify(data))
+    return jsonify(data), 200
+
 
 @app.route("/api/klines", methods=["GET"])
 def get_klines():

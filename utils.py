@@ -256,7 +256,7 @@ def calculate_volume_profile_agg(df, price_range=0.1, value_area_percentage=0.7,
     return pd.DataFrame(results)
 
 
-def calculate_advanced_volume_profile(df, interval="30T"):
+def calculate_advanced_volume_profile(df, interval="1440T"):
     # Calculate the total volume for the entire DataFrame
     total_volume = df['quantity'].sum()
 
