@@ -4,3 +4,4 @@ python-binance
 pandas
 numpy
 python-dotenv
+polygon
