@@ -4,6 +4,8 @@ from mysql_connector import *
 from math import ceil
 from polygon_forex import get_data
 import json
+from io import StringIO
+import pandas as pd
 
 app = Flask(__name__)
 
@@ -29,13 +31,26 @@ def get_forex():
     symbol = request.args.get('symbol')
     timeframe = request.args.get('timeframe')
     lookback =  request.args.get('lookback')
+    fm = request.args.get('fm')
     data = get_data(symbol,timeframe,lookback)
 
-    response = Response(data, mimetype='text/csv')
-    response.headers["Content-Type"] = "text/csv"
-    response.headers["Content-Disposition"] = "inline; filename=data.csv"
-    
-    return response
+    if fm == 'html':
+        # Convert the CSV data to DataFrame
+        csv_data = StringIO(data)
+        df = pd.read_csv(csv_data)
+
+        # Convert DataFrame to HTML table
+        html_table = df.to_html(index=False)
+
+        # Return as HTML response
+        return Response(html_table, mimetype="text/html")
+    else:
+        html_data = f"<pre>{data}</pre>"
+        # response = Response(data, mimetype='text/csv')
+        # response.headers["Content-Type"] = "text/csv"
+        # response.headers["Content-Disposition"] = "inline; filename=data.csv"
+        
+        return Response(html_data, mimetype="text/html")
 
 @app.route('/atas', methods=['POST'])
 def receive_data():
