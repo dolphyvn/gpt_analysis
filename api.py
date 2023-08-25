@@ -1,8 +1,9 @@
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, Response
 import sqlite3
 from mysql_connector import *
 from math import ceil
-
+from polygon_forex import get_data
+import json
 
 app = Flask(__name__)
 
@@ -22,14 +23,26 @@ def get_total_pages(table_name, limit, where_clause="", where_params=()):
     total_rows = query_mysql(count_query, where_params)[0][0]
     return ceil(total_rows / limit)
 
+
+@app.route("/api/forex", methods=["GET"])
+def get_forex():
+    symbol = request.args.get('symbol')
+    timeframe = request.args.get('timeframe')
+    lookback =  request.args.get('lookback')
+    data = get_data(symbol,timeframe,lookback)
+    pretty_json = json.dumps(json.loads(data), indent=4)
+    print(pretty_json)
+    return Response(pretty_json, content_type='application/json;charset=utf-8')
+
 @app.route('/atas', methods=['POST'])
 def receive_data():
     # Extract data from POST request
     data = request.json
-
+    pretty_json = json.dumps(json.loads(json_data), indent=4)
+    print(pretty_json)
     # Here you can process or store the data as needed.
     # For the purpose of this example, we'll simply return the received data.
-    print(jsonify(data))
+    # print(jsonify(data))
     return jsonify(data), 200
 
 

@@ -12,6 +12,7 @@ from mysql_connector import store_klines_to_mysql
 # from vp import calculate_vp
 import pandas as pd
 from utils import calculate_advanced_volume_profile as cavp
+from open_ai import *
 
 def calculate_volume_profile(df):
     # Convert the epoch timestamp to human-readable datetime format
@@ -201,7 +202,8 @@ async def main(symbols: List[str],intervals_list: List[str]):
 
                 store_to_file(volume_profile,symbol,interval)
                 print(f"Volume profile for {symbol}:", volume_profile)  # Print top 10 volume profiles
-                print_in_chunks(volume_profile)
+                analyze_klines(volume_profile,os.getenv('OPENAI_KEY'))
+                # print_in_chunks(volume_profile)
 
 if __name__ == "__main__":
     load_dotenv()
