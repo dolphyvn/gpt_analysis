@@ -30,9 +30,12 @@ def get_forex():
     timeframe = request.args.get('timeframe')
     lookback =  request.args.get('lookback')
     data = get_data(symbol,timeframe,lookback)
-    pretty_json = json.dumps(json.loads(data), indent=4)
-    print(pretty_json)
-    return Response(pretty_json, content_type='application/json;charset=utf-8')
+
+    response = Response(data, mimetype='text/csv')
+    response.headers["Content-Type"] = "text/csv"
+    response.headers["Content-Disposition"] = "inline; filename=data.csv"
+    
+    return response
 
 @app.route('/atas', methods=['POST'])
 def receive_data():

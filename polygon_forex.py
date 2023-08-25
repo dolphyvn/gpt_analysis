@@ -58,9 +58,9 @@ def get_data(ticker, interval, lookback):
     }, inplace=True)
 
     # Convert the DataFrame to a JSON-formatted string
-    json_data = volume_profile.to_json(orient="records", date_format="iso")
+    data = volume_profile.to_csv(index=False)
     
-    return json_data
+    return data
     # if os.getenv('storage') == 'sqlite3':
     #     # Setup SQLite database
     #     conn = create_db_connection('aggs_data.db')
