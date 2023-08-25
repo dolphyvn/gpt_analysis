@@ -32,6 +32,7 @@ def get_forex():
     timeframe = request.args.get('timeframe')
     lookback =  request.args.get('lookback')
     fm = request.args.get('fm')
+    prompt = request.args.get('prompt')
     data = get_data(symbol,timeframe,lookback)
 
     if fm == 'html':
@@ -45,12 +46,27 @@ def get_forex():
         # Return as HTML response
         return Response(html_table, mimetype="text/html")
     else:
-        html_data = f"<pre>{data}</pre>"
-        # response = Response(data, mimetype='text/csv')
-        # response.headers["Content-Type"] = "text/csv"
-        # response.headers["Content-Disposition"] = "inline; filename=data.csv"
-        
-        return Response(html_data, mimetype="text/html")
+        if prompt:
+            prompt_message = """I want you to act as a trading expert, 
+            your knowledge will focus on all trading technic, 
+            like TPO, VP, VSA, DOM, price action, and most importantly the auction theory, 
+            this is very important when doing any trend or prediction of the price, 
+            We will send you some data, 
+            you should go ahead and conduct an trend analysis using VP,VSA with auction theory as foundation. 
+            And your anwser should be short, only verdict, like bullish or bearish. Here is the data:"""
+            html_data = f"<pre>{prompt_message}</pre> <pre>{data}</pre>"
+            # response = Response(data, mimetype='text/csv')
+            # response.headers["Content-Type"] = "text/csv"
+            # response.headers["Content-Disposition"] = "inline; filename=data.csv"
+            
+            return Response(html_data, mimetype="text/html")
+        else:
+            html_data = f"<pre>{data}</pre>"
+            # response = Response(data, mimetype='text/csv')
+            # response.headers["Content-Type"] = "text/csv"
+            # response.headers["Content-Disposition"] = "inline; filename=data.csv"
+            
+            return Response(html_data, mimetype="text/html")            
 
 @app.route('/atas', methods=['POST'])
 def receive_data():
