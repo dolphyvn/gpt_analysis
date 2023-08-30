@@ -31,7 +31,8 @@ def get_total_pages(table_name, limit, where_clause="", where_params=()):
 def atas_data():
     try:
         data = request.json
-
+        
+        ticker = data['Ticker']
         bar = data['Bar']
         timestamp = data['Timestamp']
         last_trade_time = data['LastTradeTime']
@@ -53,12 +54,13 @@ def atas_data():
 
         with connection.cursor() as cursor:
             sql = ("INSERT INTO `financial_data` "
-                   "(`Bar`, `Timestamp`, `LastTradeTime`, `Open`, `High`, `Low`, `Close`, `Volume`, "
+                   "(`Ticker`, `Bar`, `Timestamp`, `LastTradeTime`, `Open`, `High`, `Low`, `Close`, `Volume`, "
                    "`Delta`, `Bid`, `Ask`, `Ticks`, `MaxDelta`, `MinDelta`, `MaxOI`, `MinOI`) "
-                   "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)")
-            cursor.execute(sql, (bar, timestamp, last_trade_time, open_price, high, low, close, volume, 
+                   "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)")
+            cursor.execute(sql, (ticker, bar, timestamp, last_trade_time, open_price, high, low, close, volume, 
                                 delta, bid, ask, ticks, max_delta, min_delta, max_oi, min_oi))
             connection.commit()
+
 
         return jsonify({"status": "success"}), 200
     except Exception as e:
