@@ -7,6 +7,7 @@ import json
 from io import StringIO
 import pandas as pd
 
+
 app = Flask(__name__)
 
 DATABASE_NAME = "klines_data.db"
@@ -24,6 +25,47 @@ def get_total_pages(table_name, limit, where_clause="", where_params=()):
     count_query = f"SELECT COUNT(*) FROM {table_name} {where_clause}"
     total_rows = query_mysql(count_query, where_params)[0][0]
     return ceil(total_rows / limit)
+
+
+@app.route('/api/atas_data', methods=['POST'])
+def atas_data():
+    try:
+        data = request.json
+
+        bar = data['Bar']
+        timestamp = data['Timestamp']
+        last_trade_time = data['LastTradeTime']
+        open_price = data['Open']
+        high = data['High']
+        low = data['Low']
+        close = data['Close']
+        volume = data['Volume']
+        delta = data['Delta']
+        bid = data['Bid']
+        ask = data['Ask']
+        ticks = data['Ticks']
+        max_delta = data['MaxDelta']
+        min_delta = data['MinDelta']
+        max_oi = data['MaxOI']
+        min_oi = data['MinOI']
+
+        connection = create_connection()
+
+        with connection.cursor() as cursor:
+            sql = ("INSERT INTO `financial_data` "
+                   "(`Bar`, `Timestamp`, `LastTradeTime`, `Open`, `High`, `Low`, `Close`, `Volume`, "
+                   "`Delta`, `Bid`, `Ask`, `Ticks`, `MaxDelta`, `MinDelta`, `MaxOI`, `MinOI`) "
+                   "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)")
+            cursor.execute(sql, (bar, timestamp, last_trade_time, open_price, high, low, close, volume, 
+                                delta, bid, ask, ticks, max_delta, min_delta, max_oi, min_oi))
+            connection.commit()
+
+        return jsonify({"status": "success"}), 200
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+    finally:
+        if connection:
+            connection.close()
 
 
 @app.route("/api/forex", methods=["GET"])
@@ -68,7 +110,7 @@ def get_forex():
             
             return Response(html_data, mimetype="text/html")            
 
-@app.route('/atas', methods=['POST'])
+@app.route('/api/atas', methods=['POST'])
 def receive_data():
     # Extract data from POST request
     data = request.json
@@ -79,6 +121,16 @@ def receive_data():
     # print(jsonify(data))
     return jsonify(data), 200
 
+@app.route('/api/bm', methods=['POST'])
+def receive_data():
+    # Extract data from POST request
+    data = request.json
+    pretty_json = json.dumps(json.loads(json_data), indent=4)
+    print(pretty_json)
+    # Here you can process or store the data as needed.
+    # For the purpose of this example, we'll simply return the received data.
+    # print(jsonify(data))
+    return jsonify(data), 200
 
 @app.route("/api/klines", methods=["GET"])
 def get_klines():
