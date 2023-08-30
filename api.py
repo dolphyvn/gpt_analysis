@@ -33,6 +33,7 @@ def atas_data():
         data = request.json
         
         ticker = data['Ticker']
+        timeframe = data['tf']
         bar = data['Bar']
         timestamp = data['Timestamp']
         last_trade_time = data['LastTradeTime']
@@ -54,10 +55,10 @@ def atas_data():
 
         with connection.cursor() as cursor:
             sql = ("INSERT INTO `financial_data` "
-                   "(`Ticker`, `Bar`, `Timestamp`, `LastTradeTime`, `Open`, `High`, `Low`, `Close`, `Volume`, "
+                   "(`TimeFrame`,`Ticker`, `Bar`, `Timestamp`, `LastTradeTime`, `Open`, `High`, `Low`, `Close`, `Volume`, "
                    "`Delta`, `Bid`, `Ask`, `Ticks`, `MaxDelta`, `MinDelta`, `MaxOI`, `MinOI`) "
-                   "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)")
-            cursor.execute(sql, (ticker, bar, timestamp, last_trade_time, open_price, high, low, close, volume, 
+                   "VALUES (%s,%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)")
+            cursor.execute(sql, (timeframe,ticker, bar, timestamp, last_trade_time, open_price, high, low, close, volume, 
                                 delta, bid, ask, ticks, max_delta, min_delta, max_oi, min_oi))
             connection.commit()
 

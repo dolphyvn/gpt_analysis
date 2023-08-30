@@ -31,7 +31,26 @@ def query_mysql(query, args=(), one=False):
 #     rv = cur.fetchall()
 #     conn.close()
 #     return (rv[0] if rv else None) if one else rv
-
+# CREATE TABLE financial_data (
+#     id INT AUTO_INCREMENT PRIMARY KEY,
+#     Ticker VARCHAR(50),
+#     Bar INT,
+#     Timestamp DATETIME,
+#     LastTradeTime DATETIME,
+#     Open FLOAT,
+#     High FLOAT,
+#     Low FLOAT,
+#     Close FLOAT,
+#     Volume FLOAT,
+#     Delta FLOAT,
+#     Bid FLOAT,
+#     Ask FLOAT,
+#     Ticks INT,
+#     MaxDelta FLOAT,
+#     MinDelta FLOAT,
+#     MaxOI FLOAT,
+#     MinOI FLOAT
+# );
 
 def create_connection():
     try:
