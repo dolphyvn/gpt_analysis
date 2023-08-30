@@ -113,7 +113,7 @@ def get_forex():
             return Response(html_data, mimetype="text/html")            
 
 @app.route('/api/atas', methods=['POST'])
-def receive_data():
+def atas_receive_data():
     # Extract data from POST request
     data = request.json
     pretty_json = json.dumps(json.loads(json_data), indent=4)
@@ -124,7 +124,7 @@ def receive_data():
     return jsonify(data), 200
 
 @app.route('/api/bm', methods=['POST'])
-def receive_data():
+def bm_receive_data():
     # Extract data from POST request
     data = request.json
     pretty_json = json.dumps(json.loads(json_data), indent=4)
