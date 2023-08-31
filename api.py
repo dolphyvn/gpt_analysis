@@ -30,6 +30,7 @@ def get_total_pages(table_name, limit, where_clause="", where_params=()):
 @app.route('/api/atas_data', methods=['POST', 'GET'])
 def atas_data():
     try:
+        connection = create_connection()
         if request.method == 'POST':
             data = request.json
             
@@ -52,7 +53,7 @@ def atas_data():
             max_oi = data['MaxOI']
             min_oi = data['MinOI']
 
-            connection = create_connection()
+            
 
             with connection.cursor() as cursor:
                 sql = ("INSERT INTO `financial_data` "
@@ -85,7 +86,7 @@ def atas_data():
                 result = cursor.fetchall()
 
             return jsonify({"status": "success", "data": result}), 200
-                        
+
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
     finally:
