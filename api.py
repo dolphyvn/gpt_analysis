@@ -30,14 +30,12 @@ def get_total_pages(table_name, limit, where_clause="", where_params=()):
 
 @app.route('/api/atas_test', methods=['POST', 'GET'])
 def atas_test():
-    try:
-        connection = create_connection()
-        if request.method == 'POST':
-            data = request.json
-            print(data)
-            return "POST"
-        elif request.method == 'GET':
-            return "Get"
+    if request.method == 'POST':
+        data = request.json
+        print(data)
+        return "POST"
+    elif request.method == 'GET':
+        return "Get"
 
 @app.route('/api/atas_data', methods=['POST', 'GET'])
 def atas_data():
