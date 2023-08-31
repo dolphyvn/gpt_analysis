@@ -27,43 +27,65 @@ def get_total_pages(table_name, limit, where_clause="", where_params=()):
     return ceil(total_rows / limit)
 
 
-@app.route('/api/atas_data', methods=['POST'])
+@app.route('/api/atas_data', methods=['POST', 'GET'])
 def atas_data():
     try:
-        data = request.json
-        
-        ticker = data['Ticker']
-        timeframe = data['tf']
-        bar = data['Bar']
-        timestamp = data['Timestamp']
-        last_trade_time = data['LastTradeTime']
-        open_price = data['Open']
-        high = data['High']
-        low = data['Low']
-        close = data['Close']
-        volume = data['Volume']
-        delta = data['Delta']
-        bid = data['Bid']
-        ask = data['Ask']
-        ticks = data['Ticks']
-        max_delta = data['MaxDelta']
-        min_delta = data['MinDelta']
-        max_oi = data['MaxOI']
-        min_oi = data['MinOI']
+        if request.method == 'POST':
+            data = request.json
+            
+            ticker = data['Ticker']
+            timeframe = data['tf']
+            bar = data['Bar']
+            timestamp = data['Timestamp']
+            last_trade_time = data['LastTradeTime']
+            open_price = data['Open']
+            high = data['High']
+            low = data['Low']
+            close = data['Close']
+            volume = data['Volume']
+            delta = data['Delta']
+            bid = data['Bid']
+            ask = data['Ask']
+            ticks = data['Ticks']
+            max_delta = data['MaxDelta']
+            min_delta = data['MinDelta']
+            max_oi = data['MaxOI']
+            min_oi = data['MinOI']
 
-        connection = create_connection()
+            connection = create_connection()
 
-        with connection.cursor() as cursor:
-            sql = ("INSERT INTO `financial_data` "
-                   "(`TimeFrame`,`Ticker`, `Bar`, `Timestamp`, `LastTradeTime`, `Open`, `High`, `Low`, `Close`, `Volume`, "
-                   "`Delta`, `Bid`, `Ask`, `Ticks`, `MaxDelta`, `MinDelta`, `MaxOI`, `MinOI`) "
-                   "VALUES (%s,%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)")
-            cursor.execute(sql, (timeframe,ticker, bar, timestamp, last_trade_time, open_price, high, low, close, volume, 
-                                delta, bid, ask, ticks, max_delta, min_delta, max_oi, min_oi))
-            connection.commit()
+            with connection.cursor() as cursor:
+                sql = ("INSERT INTO `financial_data` "
+                       "(`TimeFrame`,`Ticker`, `Bar`, `Timestamp`, `LastTradeTime`, `Open`, `High`, `Low`, `Close`, `Volume`, "
+                       "`Delta`, `Bid`, `Ask`, `Ticks`, `MaxDelta`, `MinDelta`, `MaxOI`, `MinOI`) "
+                       "VALUES (%s,%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)")
+                cursor.execute(sql, (timeframe,ticker, bar, timestamp, last_trade_time, open_price, high, low, close, volume, 
+                                    delta, bid, ask, ticks, max_delta, min_delta, max_oi, min_oi))
+                connection.commit()
 
 
-        return jsonify({"status": "success"}), 200
+            return jsonify({"status": "success"}), 200
+        elif request.method == 'GET':
+            timeframe = request.args.get('timeframe', None)
+            ticker = request.args.get('ticker', None)
+
+            query_parameters = []
+            sql_query = "SELECT * FROM `financial_data` WHERE 1=1"
+
+            if timeframe:
+                sql_query += " AND `TimeFrame` = %s"
+                query_parameters.append(timeframe)
+            
+            if ticker:
+                sql_query += " AND `Ticker` = %s"
+                query_parameters.append(ticker)
+
+            with connection.cursor() as cursor:
+                cursor.execute(sql_query, query_parameters)
+                result = cursor.fetchall()
+
+            return jsonify({"status": "success", "data": result}), 200
+                        
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
     finally:
