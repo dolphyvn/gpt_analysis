@@ -6,6 +6,7 @@ from polygon_forex import get_data
 import json
 from io import StringIO
 import pandas as pd
+import csv
 
 
 app = Flask(__name__)
@@ -30,9 +31,40 @@ def get_total_pages(table_name, limit, where_clause="", where_params=()):
 
 @app.route('/api/atas_test', methods=['POST', 'GET'])
 def atas_test():
+    list  = []
     if request.method == 'POST':
-        data = request.json
-        print(data)
+        json_data = request.json
+
+        flattened_data = flatten(json_data)
+
+        # CSV file name
+        csv_file_name = 'data.csv'
+
+        # Check if CSV file exists
+        if os.path.exists(csv_file_name):
+            # Read existing CSV into a list of dictionaries
+            with open(csv_file_name, mode='r', newline='') as f:
+                reader = csv.DictReader(f)
+                existing_data = [row for row in reader]
+                
+            # Remove row with the same 'bar' value if exists
+            existing_data = [row for row in existing_data if int(row.get('bar', 0)) != flattened_data['bar']]
+        else:
+            existing_data = []
+
+        # Add the new flattened data to the list
+        existing_data.append(flattened_data)
+
+        # Sort by 'bar' (optional)
+        existing_data.sort(key=lambda x: int(x.get('bar', 0)))
+
+        # Write back to CSV
+        with open(csv_file_name, mode='w', newline='') as f:
+            writer = csv.DictWriter(f, fieldnames=flattened_data.keys())
+            writer.writeheader()
+            for row in existing_data:
+                writer.writerow(row)
+                print(row)
         return "POST"
     elif request.method == 'GET':
         return "Get"
@@ -367,7 +399,16 @@ def get_volume_per_price(symbol, date, limit, offset, price_difference=5.0):
 
     return result
 
-
+# Flatten the nested JSON data
+def flatten(json_data, parent_key='', sep='_'):
+    items = {}
+    for k, v in json_data.items():
+        new_key = f"{parent_key}{sep}{k}" if parent_key else k
+        if isinstance(v, dict):
+            items.update(flatten(v, new_key, sep=sep))
+        else:
+            items[new_key] = v
+    return items
 
 @app.route("/api/vp_data", methods=["GET"])
 def get_vp_data():
@@ -463,4 +504,4 @@ def get_klines_agg_data():
 
 # To run the API
 if __name__ == "__main__":
-    app.run(debug=True, host='0.0.0.0',port=5000)
+    app.run(debug=True, host='0.0.0.0',port=8080)
