@@ -27,47 +27,184 @@ def get_total_pages(table_name, limit, where_clause="", where_params=()):
     total_rows = query_mysql(count_query, where_params)[0][0]
     return ceil(total_rows / limit)
 
+def write_to_json(json_data):
 
+    # JSON file name
+    json_file_name = json_data['Ticker'] + ".json"
+
+    # Check if JSON file exists
+    if os.path.exists(json_file_name):
+        # Read existing JSON file into a list
+        with open(json_file_name, 'r') as f:
+            existing_data = json.load(f)
+            
+        # Remove dictionary with the same 'bar' value if exists
+        existing_data = [item for item in existing_data if item.get('timestamp') != json_data['timestamp']]
+    else:
+        existing_data = []
+
+    # Add the new data to the list
+    existing_data.append(json_data)
+
+    # Write back to JSON file
+    with open(json_file_name, 'w') as f:
+        json.dump(existing_data, f, indent=4)
+
+def write_to_csv(json_data):
+
+    # CSV file name
+    csv_file_name = json_data['Ticker'] + ".csv"
+
+    # Check if CSV file exists
+    if os.path.exists(csv_file_name):
+        # Read existing CSV into a list of dictionaries
+        with open(csv_file_name, mode='r', newline='') as f:
+            reader = csv.DictReader(f)
+            existing_data = [row for row in reader]
+            
+        # Remove row with the same 'timestamp' value if exists
+        existing_data = [row for row in existing_data if int(row.get('timestamp', 0)) != json_data['timestamp']]
+    else:
+        existing_data = []
+
+    # Add the new flattened data to the list
+    existing_data.append(json_data)
+
+    # Sort by 'timestamp' (optional)
+    existing_data.sort(key=lambda x: int(x.get('timestamp', 0)))
+
+    # Write back to CSV
+    with open(csv_file_name, mode='w', newline='') as f:
+        writer = csv.DictWriter(f, fieldnames=json_data.keys())
+        writer.writeheader()
+        for row in existing_data:
+            writer.writerow(row)
 
 @app.route('/api/atas_test', methods=['POST', 'GET'])
 def atas_test():
-    list  = []
     if request.method == 'POST':
         json_data = request.json
+        del json_data['ticks']
+        for js in json_data['candlefootprint']:
+            del js['Between']
+            del js['Ticks']
+            del js['Time']
+        # del json_data['candlefootprint']
+        # Find hvn and lvn from candlefootprint data
+
+        # Initialize variables to hold the high and low volume nodes
+        high_volume_node = None
+        low_volume_node = None
+
+        # Initialize variables to hold the highest and lowest volumes
+        highest_volume = float("-inf")  # Use negative infinity as a starting point for comparison
+        lowest_volume = float("inf")  # Use positive infinity as a starting point for comparison
+
+        # Loop through the data to find the high and low volume nodes
+        for node in json_data['candlefootprint']:
+            # Calculate and add Delta to each node
+            node['Delta'] = node['Bid'] - node['Ask']
+            del node['Bid']
+            del node['Ask']
+        # Loop through the data to find the high and low volume nodes
+        for node in json_data['candlefootprint']:
+            if node["Volume"] > highest_volume:
+                highest_volume = node["Volume"]
+                high_volume_node = node
+            if node["Volume"] < lowest_volume:
+                lowest_volume = node["Volume"]
+                low_volume_node = node
+
+        print("High Volume Node:", high_volume_node)
+        print("Low Volume Node:", low_volume_node)
+        # add these back to json_data
+        json_data['hvn'] = high_volume_node
+        json_data['lvn'] = low_volume_node
+
+        del json_data['open']
+        del json_data['high']
+        del json_data['low']
+        del json_data['close']
+        del json_data['bar']
+        del json_data['candlefootprint']
+
+        del json_data['openBidAsk']['Ticks']
+        del json_data['openBidAsk']['Between']
+        del json_data['openBidAsk']['Time']
+
+        json_data['openBidAsk']['Delta'] = json_data['openBidAsk']['Bid'] - json_data['openBidAsk']['Ask']
+        json_data['highBidAsk']['Delta'] = json_data['highBidAsk']['Bid'] - json_data['highBidAsk']['Ask']
+        json_data['lowBidAsk']['Delta'] = json_data['lowBidAsk']['Bid'] - json_data['lowBidAsk']['Ask']
+        json_data['closeBidAsk']['Delta'] = json_data['closeBidAsk']['Bid'] - json_data['closeBidAsk']['Ask']
+        
+        json_data['vpoc']['Delta'] = json_data['vpoc']['Bid'] - json_data['vpoc']['Ask']
+        json_data['tpoc']['Delta'] = json_data['tpoc']['Bid'] - json_data['tpoc']['Ask']    
+        # json_data['vpoc']['Delta'] = json_data['vpoc']['Bid'] - json_data['vpoc']['Ask']    
+
+        del json_data['vpoc']['Bid']
+        del json_data['vpoc']['Ask']        
+
+        del json_data['tpoc']['Bid']
+        del json_data['tpoc']['Ask']  
+
+        del json_data['tickpoc']
+        del json_data['bidpoc']
+        del json_data['askpoc']
+        
+        del json_data['openBidAsk']['Bid']
+        del json_data['openBidAsk']['Ask']
+        del json_data['highBidAsk']['Bid']
+        del json_data['highBidAsk']['Ask']
+
+        del json_data['lowBidAsk']['Bid']
+        del json_data['lowBidAsk']['Ask']
+        del json_data['closeBidAsk']['Bid']
+        del json_data['closeBidAsk']['Ask']
+        
+        del json_data['highBidAsk']['Ticks']
+        del json_data['highBidAsk']['Between']
+        del json_data['highBidAsk']['Time']
+
+        del json_data['lowBidAsk']['Ticks']
+        del json_data['lowBidAsk']['Between']
+        del json_data['lowBidAsk']['Time']
+
+        del json_data['closeBidAsk']['Ticks']
+        del json_data['closeBidAsk']['Between']
+        del json_data['closeBidAsk']['Time']
+
+        del json_data['vpoc']['Ticks']
+        del json_data['vpoc']['Between']
+        del json_data['vpoc']['Time']
+
+        # del json_data['tickpoc']['Ticks']
+        # del json_data['tickpoc']['Between']
+        # del json_data['tickpoc']['Time']
+
+        del json_data['tpoc']['Ticks']
+        del json_data['tpoc']['Between']
+        del json_data['tpoc']['Time']
+
+        # del json_data['askpoc']['Ticks']
+        # del json_data['askpoc']['Between']
+        # del json_data['askpoc']['Time']
+
+        # del json_data['bidpoc']['Ticks']
+        # del json_data['bidpoc']['Between']
+        # del json_data['bidpoc']['Time']
+        print(json_data)
+
 
         flattened_data = flatten(json_data)
 
-        # CSV file name
-        csv_file_name = 'data.csv'
+        write_to_json(json_data)
+        # write_to_csv(flattened_data)
 
-        # Check if CSV file exists
-        if os.path.exists(csv_file_name):
-            # Read existing CSV into a list of dictionaries
-            with open(csv_file_name, mode='r', newline='') as f:
-                reader = csv.DictReader(f)
-                existing_data = [row for row in reader]
-                
-            # Remove row with the same 'bar' value if exists
-            existing_data = [row for row in existing_data if int(row.get('bar', 0)) != flattened_data['bar']]
-        else:
-            existing_data = []
-
-        # Add the new flattened data to the list
-        existing_data.append(flattened_data)
-
-        # Sort by 'bar' (optional)
-        existing_data.sort(key=lambda x: int(x.get('bar', 0)))
-
-        # Write back to CSV
-        with open(csv_file_name, mode='w', newline='') as f:
-            writer = csv.DictWriter(f, fieldnames=flattened_data.keys())
-            writer.writeheader()
-            for row in existing_data:
-                writer.writerow(row)
-                print(row)
         return "POST"
     elif request.method == 'GET':
         return "Get"
+
+
 
 @app.route('/api/atas_data', methods=['POST', 'GET'])
 def atas_data():
