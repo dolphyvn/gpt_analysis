@@ -22,6 +22,28 @@ DEFAULT_PAGE_SIZE = 100
 #     conn.close()
 #     return (rv[0] if rv else None) if one else rv
 
+def count_tokens_from_json_file(filename):
+    """
+    Count the total number of tokens in a JSON file.
+
+    :param filename: Path to the JSON file
+    :return: Total number of tokens in the file
+    """
+    with open(filename, 'r', encoding='utf-8') as f:
+        data = json.load(f)
+
+    # Convert the JSON data back to string and split it into words/tokens
+    data_str = json.dumps(data)
+    tokens = data_str.split()
+
+    return len(tokens)
+
+def fix_microseconds(dt_str):
+    time_parts = dt_str.split(".")
+    if len(time_parts) == 2:
+        time_parts[1] = (time_parts[1] + "000000")[:6]
+    return ".".join(time_parts)
+
 def get_total_pages(table_name, limit, where_clause="", where_params=()):
     count_query = f"SELECT COUNT(*) FROM {table_name} {where_clause}"
     total_rows = query_mysql(count_query, where_params)[0][0]
@@ -49,6 +71,9 @@ def write_to_json(json_data):
     # Write back to JSON file
     with open(json_file_name, 'w') as f:
         json.dump(existing_data, f, indent=4)
+
+    total_tokens = count_tokens_from_json_file(json_file_name)
+    print(f"Total tokens in {json_file_name}: {total_tokens}")
 
 def write_to_csv(json_data):
 
@@ -80,11 +105,26 @@ def write_to_csv(json_data):
         for row in existing_data:
             writer.writerow(row)
 
-@app.route('/api/atas_test', methods=['POST', 'GET'])
+@app.route('/api/atas_test', methods=['POST'])
 def atas_test():
+    from datetime import datetime
+
     if request.method == 'POST':
         json_data = request.json
+        print(json_data['candlefootprint'])
+        write_to_json(json_data)
+        return "POST"
+
+@app.route('/api/atas_test_test', methods=['POST', 'GET'])
+def atas_test_test():
+    from datetime import datetime
+
+    if request.method == 'POST':
+        result_data = request.json
+        # print(json_data)
+        json_data = result_data
         del json_data['ticks']
+        # print(json_data['candlefootprint'])
         for js in json_data['candlefootprint']:
             del js['Between']
             del js['Ticks']
@@ -96,9 +136,16 @@ def atas_test():
         high_volume_node = None
         low_volume_node = None
 
+        highest_volume_negative_delta = None
+        highest_volume_positive_delta = None
+
         # Initialize variables to hold the highest and lowest volumes
         highest_volume = float("-inf")  # Use negative infinity as a starting point for comparison
         lowest_volume = float("inf")  # Use positive infinity as a starting point for comparison
+
+        # Initialize variables to hold the highest and lowest volumes
+        highest_volume_positive = float("-inf")  # Use negative infinity as a starting point for comparison
+        highest_volume_negative = float("inf")  # Use positive infinity as a starting point for comparison
 
         # Loop through the data to find the high and low volume nodes
         for node in json_data['candlefootprint']:
@@ -106,6 +153,7 @@ def atas_test():
             node['Delta'] = node['Bid'] - node['Ask']
             del node['Bid']
             del node['Ask']
+        print(json_data)
         # Loop through the data to find the high and low volume nodes
         for node in json_data['candlefootprint']:
             if node["Volume"] > highest_volume:
@@ -115,11 +163,40 @@ def atas_test():
                 lowest_volume = node["Volume"]
                 low_volume_node = node
 
+
+        # Filtering positive deltas
+        positive_deltas = [item for item in json_data['candlefootprint'] if item['Delta'] > 0]
+        highest_volume_positive_delta = max(positive_deltas, key=lambda x: x['Volume']) if positive_deltas else None
+
+        # Filtering negative deltas
+        negative_deltas = [item for item in json_data['candlefootprint'] if item['Delta'] < 0]
+        highest_volume_negative_delta = max(negative_deltas, key=lambda x: x['Volume']) if negative_deltas else None
+
+        print("Highest volume with positive delta:", highest_volume_positive_delta)
+        print("Highest volume with negative delta:", highest_volume_negative_delta)
+
+        # Loop through the data to find the high and low volume nodes with positive delta
+        for node in json_data['candlefootprint']:
+            if (node["Volume"] > highest_volume_positive) and node['Delta'] > 0:
+                highest_volume_positive = node["Volume"]
+                highest_volume_positive_delta = node
+
+
+        # Loop through the data to find the high and low volume nodes with negative delta
+        for node in json_data['candlefootprint']:
+            if (node["Volume"] > highest_volume_negative) and node['Delta'] < 0:
+                highest_volume_negative = node["Volume"]
+                highest_volume_negative_delta = node
+
+
         print("High Volume Node:", high_volume_node)
         print("Low Volume Node:", low_volume_node)
         # add these back to json_data
         json_data['hvn'] = high_volume_node
         json_data['lvn'] = low_volume_node
+
+        json_data['high_volume_positive_delta'] = highest_volume_positive_delta
+        json_data['high_volume_negative_delta'] = highest_volume_negative_delta
 
         del json_data['open']
         del json_data['high']
@@ -147,10 +224,10 @@ def atas_test():
         del json_data['tpoc']['Bid']
         del json_data['tpoc']['Ask']  
 
-        del json_data['tickpoc']
-        del json_data['bidpoc']
-        del json_data['askpoc']
-        
+        # del json_data['tickpoc']
+        # del json_data['bidpoc']
+        # del json_data['askpoc']
+
         del json_data['openBidAsk']['Bid']
         del json_data['openBidAsk']['Ask']
         del json_data['highBidAsk']['Bid']
@@ -184,7 +261,7 @@ def atas_test():
         del json_data['tpoc']['Ticks']
         del json_data['tpoc']['Between']
         del json_data['tpoc']['Time']
-
+        del json_data['chartInfo']
         # del json_data['askpoc']['Ticks']
         # del json_data['askpoc']['Between']
         # del json_data['askpoc']['Time']
@@ -192,12 +269,45 @@ def atas_test():
         # del json_data['bidpoc']['Ticks']
         # del json_data['bidpoc']['Between']
         # del json_data['bidpoc']['Time']
-        print(json_data)
+
+        # Calculate candle duration:
+        # Parse the datetime strings to datetime objects
+        # Define the datetime format
+        # Format the datetime strings to have exactly 6 digits for the fractional seconds
+        timestamp_str = fix_microseconds(json_data["timestamp"])
+        lasttradetime_str = fix_microseconds(json_data["lasttradetime"])
+
+        # Given timestamps
+        timestamp = '2023-01-16T00:00:00'
+        lasttradetime = '2023-01-22T23:59:58.905'
 
 
-        flattened_data = flatten(json_data)
 
-        write_to_json(json_data)
+        # Define the datetime format
+        datetime_format1 = "%Y-%m-%dT%H:%M:%S"
+        datetime_format2 = "%Y-%m-%dT%H:%M:%S.%f"
+        
+        # Parse the datetime strings to datetime objects
+        if json_data['chartType'] == 'Volume':
+            timestamp_dt = datetime.strptime(timestamp_str, datetime_format2)
+            lasttradetime_dt = datetime.strptime(lasttradetime_str, datetime_format2)
+        else:
+            timestamp_dt = datetime.strptime(timestamp_str, datetime_format1)
+            lasttradetime_dt = datetime.strptime(lasttradetime_str, datetime_format2)
+
+        # Calculate the time difference
+        time_diff = lasttradetime_dt - timestamp_dt
+
+        # Get the total seconds
+        total_seconds = time_diff.total_seconds()
+        json_data['duration'] = total_seconds
+        # print(json_data)
+
+
+        # flattened_data = flatten(json_data)
+
+        # write_to_json(json_data)
+        write_to_json(result_data)
         # write_to_csv(flattened_data)
 
         return "POST"

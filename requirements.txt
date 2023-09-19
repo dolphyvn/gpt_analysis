@@ -4,4 +4,5 @@ python-binance
 pandas
 numpy
 python-dotenv
+plotly
 polygon-api-client

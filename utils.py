@@ -58,6 +58,62 @@ import datetime
 
 import csv
 
+
+import pandas as pd
+
+def vsa_volume(df):
+    # Assuming 'df' is your DataFrame with a 'Volume' column.
+    # Example:
+    # df = pd.read_csv("path_to_your_data.csv")
+
+    # Parameters
+    lengthVolumeMA = 20
+    lengthVolumeMA1 = 21
+    lengthVolumeMA2 = 26
+    lengthVolumeMA3 = 33
+    ratioUltraVolume = 2.2
+    ratioVeryHighVolume = 1.8
+    ratioHighVolume = 1.2
+    ratioNormalVolume = 0.8
+    ratioLowVolume = 0.4
+    ratioVeryLowVolume = 0.4
+
+    # EMA calculations
+    df['Volume_MA'] = df['Volume'].ewm(span=lengthVolumeMA, adjust=False).mean()
+    df['Volume_MA1'] = df['Volume'].ewm(span=lengthVolumeMA1, adjust=False).mean()
+    df['Volume_MA2'] = df['Volume'].ewm(span=lengthVolumeMA2, adjust=False).mean()
+    df['Volume_MA3'] = df['Volume'].ewm(span=lengthVolumeMA3, adjust=False).mean()
+
+    # Volume levels
+    df['UltraHighVolumeMin'] = df['Volume_MA'] * ratioUltraVolume
+    df['VeryHighVolumeMin'] = df['Volume_MA'] * ratioVeryHighVolume
+    df['HighVolumeMin'] = df['Volume_MA'] * ratioHighVolume
+    df['NormalVolumeMin'] = df['Volume_MA'] * ratioNormalVolume
+    df['LowVolumeMin'] = df['Volume_MA'] * ratioLowVolume
+    df['VeryLowVolumeMin'] = df['Volume_MA'] * ratioVeryLowVolume
+
+    # Volume flags
+    df['VolUltraHigh'] = df['Volume'] >= df['UltraHighVolumeMin']
+    df['VolVeryHigh'] = (df['Volume'] >= df['VeryHighVolumeMin']) & (df['Volume'] < df['UltraHighVolumeMin'])
+    df['VolHigh'] = (df['Volume'] >= df['HighVolumeMin']) & (df['Volume'] < df['VeryHighVolumeMin'])
+    df['VolNormal'] = (df['Volume'] >= df['NormalVolumeMin']) & (df['Volume'] < df['HighVolumeMin'])
+    df['VolLow'] = (df['Volume'] >= df['LowVolumeMin']) & (df['Volume'] < df['NormalVolumeMin'])
+    df['VolVeryLow'] = df['Volume'] < df['LowVolumeMin']
+
+    # Assigning colors (You can adjust the colors according to your requirement)
+    df['Palette'] = pd.Series(dtype='object')
+    df.loc[df['VolUltraHigh'], 'Palette'] = 'purple'
+    df.loc[df['VolVeryHigh'], 'Palette'] = 'red'
+    df.loc[df['VolHigh'], 'Palette'] = 'orange'
+    df.loc[df['VolNormal'], 'Palette'] = 'green'
+    df.loc[df['VolLow'], 'Palette'] = 'blue'
+    df.loc[df['VolVeryLow'], 'Palette'] = 'silver'
+
+    # Display
+    print(df[['Volume', 'Palette']])
+    return df
+
+
 def print_in_chunks(df, chunk_size=50):
     if len(df) <= chunk_size:
         print(df)
