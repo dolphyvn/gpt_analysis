@@ -13,8 +13,8 @@ from mysql_connector import store_klines_to_mysql
 import pandas as pd
 from utils import calculate_advanced_volume_profile as cavp
 # from open_ai import *
-
-
+import time
+import requests
 
 
 
@@ -81,6 +81,7 @@ async def main(symbols: List[str],intervals_list: List[str]):
 
         # Fetch historical data (M=month,w=week,d=day,h=hour,m=minute)
         for symbol in symbols:
+            time.sleep(5)
             print(f"Fetching historical data for {symbol} with interval {interval} and limit {limit}")
             klines = await fetch_historical_data(symbol, interval=interval, desired_limit=limit)
 
