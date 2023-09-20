@@ -52,7 +52,7 @@ import os
 # last_fill_quantity  Last Trade Order Quantity
 # accumulated_fill_quantity   Order Accumulated Fill Quantity
 import pathlib
-
+import requests
 # import pandas as pd
 import datetime
 
@@ -60,6 +60,68 @@ import csv
 
 
 import pandas as pd
+
+def send_to_telegram(symbol):
+    url = "https://api.telegram.org/bot5952169652:AAFQu6U9ap3D-fMzjy6J909k1skvLhAez_Q/sendMessage"
+    payload = {
+        "chat_id": "-726096856",
+        "parse_mode": "Markdown",
+        "text": f"VolUltraHigh on {symbol}"
+    }
+    response = requests.post(url, data=payload)
+    if response.status_code == 200:
+        print("Message sent successfully!")
+    else:
+        print("Failed to send message. Response code:", response.status_code)
+
+def check_spikes(df,vol_x):
+    # Parameters
+    vol_x = 1.5
+    vol_ma = 100
+    only_valid_hl = True
+    only_hammers_shooters = True
+    only_same_color = False
+
+    # Volume SMA
+    df['Volume_SMA'] = df['Volume'].rolling(window=vol_ma).mean()
+
+    # Valid Highs & Lows
+    if only_valid_hl:
+        df['Valid_High'] = (df['High'].shift(1) > df['High'].shift(2)) & (df['High'].shift(1) > df['High'])
+        df['Valid_Low'] = (df['Low'].shift(1) < df['Low'].shift(2)) & (df['Low'].shift(1) < df['Low'])
+    else:
+        df['Valid_High'] = True
+        df['Valid_Low'] = True
+
+    # Hammers and Shooters
+    df['Distance_HL'] = df['High'] - df['Low']
+    df['Valid_Hammer'] = (df['Open'] > df['Low'] + df['Distance_HL'] / 2) & (df['Close'] > df['Low'] + df['Distance_HL'] / 2)
+    df['Valid_Shooter'] = (df['Open'] < df['Low'] + df['Distance_HL'] / 2) & (df['Close'] < df['Low'] + df['Distance_HL'] / 2)
+
+    if only_hammers_shooters:
+        df['Valid_High'] &= df['Valid_Shooter'].shift(1)
+        df['Valid_Low'] &= df['Valid_Hammer'].shift(1)
+
+    # Same Color Candles
+    if only_same_color:
+        df['Valid_High'] &= df['Close'].shift(1) < df['Open'].shift(1)
+        df['Valid_Low'] &= df['Close'].shift(1) > df['Open'].shift(1)
+
+    # Volume check
+    df['Vol_Check'] = df['Volume'] > df['Volume_SMA'] * vol_x
+
+    # Results
+    df['Result_Bearish'] = df['Valid_High'] & df['Vol_Check'].shift(1)
+    df['Result_Bullish'] = df['Valid_Low'] & df['Vol_Check'].shift(1)
+
+    # Display results for the last two candles if True
+    last_rows = df.iloc[-2:][['Result_Bearish', 'Result_Bullish']]
+    # print(last_rows)
+    # for _, row in last_rows.iterrows():
+    #     if row['Result_Bearish'] or row['Result_Bullish']:
+    #         print(row)
+    return last_rows
+
 
 def vsa_volume(df):
     # Assuming 'df' is your DataFrame with a 'Volume' column.

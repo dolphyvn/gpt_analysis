@@ -6,7 +6,7 @@ from binance import AsyncClient, BinanceSocketManager
 from dotenv import load_dotenv
 from collections import defaultdict
 import pandas as pd
-from utils import store_klines_to_db, vsa_volume
+from utils import store_klines_to_db, vsa_volume, check_spikes,send_to_telegram
 from datetime import datetime
 from mysql_connector import store_klines_to_mysql
 # from vp import calculate_vp
@@ -94,21 +94,11 @@ async def main(symbols: List[str],intervals_list: List[str]):
             if os.getenv('storage') == 'mysql':
                 store_klines_to_mysql(klines,interval,symbol)
             else:
-                df = vsa_volume(df)
-                # Check the last row of the dataframe
-                if df.iloc[-1]['Palette'] == 'purple' or df.iloc[-1]['VolUltraHigh'] or df.iloc[-2]['Palette'] == 'purple' or df.iloc[-2]['VolUltraHigh']:
-                    url = "https://api.telegram.org/bot5952169652:AAFQu6U9ap3D-fMzjy6J909k1skvLhAez_Q/sendMessage"
-                    payload = {
-                        "chat_id": "-726096856",
-                        "parse_mode": "Markdown",
-                        "text": f"VolUltraHigh on {symbol}"
-                    }
-                    response = requests.post(url, data=payload)
-                    if response.status_code == 200:
-                        print("Message sent successfully!")
-                    else:
-                        print("Failed to send message. Response code:", response.status_code)
-
+                # df = vsa_volume(df)
+                last_rows = check_spikes(df,2)
+                for _, row in last_rows.iterrows():
+                    if row['Result_Bearish'] or row['Result_Bullish']:
+                        send_to_telegram(symbol)
 
 if __name__ == "__main__":
     load_dotenv()
